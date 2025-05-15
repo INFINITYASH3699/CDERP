@@ -4,6 +4,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const sgMail = require('@sendgrid/mail');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config(); // Load environment variables
 
 const app = express();
@@ -36,7 +37,7 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
@@ -65,7 +66,20 @@ const userSchema = new mongoose.Schema({
   countryCode: { type: String, trim: true }, // Removed required constraint
   coursename: { type: String, trim: true }, // Optional
   location: { type: String, trim: true }, // Optional
+  status: { type: String, enum: ['New', 'Contacted', 'Converted', 'Rejected'], default: 'New' },
+  notes: { type: String, trim: true, default: '' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date }
+});
+
+userSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+userSchema.pre('findOneAndUpdate', function(next) {
+  this.set({ updatedAt: new Date() });
+  next();
 });
 
 const User = mongoose.model("User", userSchema);
@@ -74,9 +88,56 @@ const User = mongoose.model("User", userSchema);
 const adminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true }, // hashed
+  role: { type: String, enum: ['SuperAdmin','Admin','ViewMode','EditMode'], default: 'Admin' },
+  active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 const Admin = mongoose.model("Admin", adminSchema);
+
+// --- Audit Log Schema ---
+const auditLogSchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+  action: String,
+  target: String,
+  metadata: mongoose.Schema.Types.Mixed,
+  createdAt: { type: Date, default: Date.now }
+});
+const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+
+// --- JWT Helper Functions ---
+const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
+
+function generateToken(admin) {
+  return jwt.sign({ id: admin._id, role: admin.role }, JWT_SECRET, { expiresIn: '12h' });
+}
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Missing token' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+}
+
+function requireRole(roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.admin.role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    next();
+  };
+}
+
+async function logAction(adminId, action, target, metadata={}) {
+  try { await AuditLog.create({ adminId, action, target, metadata }); } catch(e){ console.error('AuditLog error', e); }
+}
 
 // --- API Routes ---
 
@@ -185,10 +246,11 @@ app.post("/api/submit", async (req, res) => {
   }
 });
 
-// === Fetch Leads Route ===
-app.get("/api/leads", async (req, res) => {
+// === Fetch Leads Route (Admin Protected) ===
+app.get("/api/leads", authMiddleware, requireRole(['SuperAdmin','Admin','EditMode','ViewMode']), async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const users = await User.find().sort({ createdAt: -1 }).populate('assignedTo', 'username role').lean();
+    await logAction(req.admin.id, 'view_leads', 'User', {});
     res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching leads:", error);
@@ -196,8 +258,32 @@ app.get("/api/leads", async (req, res) => {
   }
 });
 
-// === Delete Lead Route ===
-app.delete("/api/leads/:id", async (req, res) => {
+// === Update Lead Route (Admin Protected) ===
+app.put("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','EditMode']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateFields = {};
+    const allowedFields = ['name','email','contact','countryCode','coursename','location','status','notes','assignedTo'];
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) updateFields[key] = req.body[key];
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid lead ID format." });
+    }
+    const updatedUser = await User.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Lead not found." });
+    }
+    await logAction(req.admin.id, 'update_lead', 'User', { leadId: id, updateFields });
+    res.status(200).json({ message: "Lead updated successfully.", lead: updatedUser });
+  } catch (error) {
+    console.error(`Error updating lead with ID (${req.params.id}):`, error);
+    res.status(500).json({ message: "Internal Server Error occurred while updating.", error: error.message });
+  }
+});
+
+// === Delete Lead Route (Admin Protected) ===
+app.delete("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin']), async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -207,6 +293,7 @@ app.delete("/api/leads/:id", async (req, res) => {
     if (!deletedUser) {
       return res.status(404).json({ message: "Lead not found." });
     }
+    await logAction(req.admin.id, 'delete_lead', 'User', { leadId: id });
     console.log("Lead deleted successfully:", id);
     res.status(200).json({ message: "Lead deleted successfully." });
   } catch (error) {
@@ -215,14 +302,14 @@ app.delete("/api/leads/:id", async (req, res) => {
   }
 });
 
-// === Admin Login Route ===
+// === Admin Login Route (returns JWT) ===
 app.post("/api/admin-login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password required.' });
   }
   try {
-    const admin = await Admin.findOne({ username });
+    const admin = await Admin.findOne({ username, active: true });
     if (!admin) {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
@@ -230,10 +317,165 @@ app.post("/api/admin-login", async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
-    return res.status(200).json({ message: 'Login successful.' });
+    const token = generateToken(admin);
+    await logAction(admin._id, 'login', 'Admin', {});
+    return res.status(200).json({ message: 'Login successful.', token, role: admin.role, username: admin.username });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
+  }
+});
+
+// === Admin CRUD (SuperAdmin only) ===
+
+// Create Admin
+app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    if (!username || !password || !role) {
+      return res.status(400).json({ message: 'Username, password, and role are required.' });
+    }
+    if (!['SuperAdmin','Admin','ViewMode','EditMode'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role.' });
+    }
+    const existing = await Admin.findOne({ username });
+    if (existing) {
+      return res.status(409).json({ message: 'Username already exists.' });
+    }
+    const hashed = await bcrypt.hash(password, 10);
+    const admin = await Admin.create({ username, password: hashed, role });
+    await logAction(req.admin.id, 'create_admin', 'Admin', { adminId: admin._id, username, role });
+    res.status(201).json({ message: 'Admin created.', admin: { id: admin._id, username: admin.username, role: admin.role, active: admin.active } });
+  } catch (e) {
+    res.status(500).json({ message: 'Error creating admin.', error: e.message });
+  }
+});
+
+// List Admins
+app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const admins = await Admin.find().select('-password').lean();
+    res.status(200).json(admins);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching admins.', error: e.message });
+  }
+});
+
+// Update Admin (role, active)
+app.put('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, active, password } = req.body;
+    const updateFields = {};
+    if (role) {
+      if (!['SuperAdmin','Admin','ViewMode','EditMode'].includes(role)) {
+        return res.status(400).json({ message: 'Invalid role.' });
+      }
+      updateFields.role = role;
+    }
+    if (typeof active === 'boolean') updateFields.active = active;
+    if (password) updateFields.password = await bcrypt.hash(password, 10);
+    const admin = await Admin.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+    if (!admin) return res.status(404).json({ message: 'Admin not found.' });
+    await logAction(req.admin.id, 'update_admin', 'Admin', { adminId: id, updateFields });
+    res.status(200).json({ message: 'Admin updated.', admin: { id: admin._id, username: admin.username, role: admin.role, active: admin.active } });
+  } catch (e) {
+    res.status(500).json({ message: 'Error updating admin.', error: e.message });
+  }
+});
+
+// Delete Admin
+app.delete('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (req.admin.id === id) {
+      return res.status(400).json({ message: "You cannot delete yourself." });
+    }
+    const admin = await Admin.findByIdAndDelete(id);
+    if (!admin) return res.status(404).json({ message: 'Admin not found.' });
+    await logAction(req.admin.id, 'delete_admin', 'Admin', { adminId: id });
+    res.status(200).json({ message: 'Admin deleted.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Error deleting admin.', error: e.message });
+  }
+});
+
+// === Audit Log (SuperAdmin/Admin) ===
+app.get('/api/audit-logs', authMiddleware, requireRole(['SuperAdmin','Admin']), async (req, res) => {
+  try {
+    const logs = await AuditLog.find().populate('adminId', 'username role').sort({ createdAt: -1 }).limit(200).lean();
+    res.status(200).json(logs);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching audit logs.', error: e.message });
+  }
+});
+
+// === User Management CRUD (SuperAdmin/Admin) ===
+
+// List Users (Leads) - already handled by /api/leads
+
+// Get single user
+app.get('/api/users/:id', authMiddleware, requireRole(['SuperAdmin','Admin','EditMode','ViewMode']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid user ID." });
+    const user = await User.findById(id).populate('assignedTo', 'username role').lean();
+    if (!user) return res.status(404).json({ message: "User not found." });
+    res.status(200).json(user);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching user.', error: e.message });
+  }
+});
+
+// Create user (lead) (Admin only)
+app.post('/api/users', authMiddleware, requireRole(['SuperAdmin','Admin','EditMode']), async (req, res) => {
+  try {
+    const { name, email, contact, countryCode, coursename, location, status, notes, assignedTo } = req.body;
+    if (!name || !email || !contact) {
+      return res.status(400).json({ message: "Name, email, and contact are required." });
+    }
+    const existingUser = await User.findOne({ $or: [ { email }, { contact } ] });
+    if (existingUser) {
+      return res.status(409).json({ message: "User with this email or contact already exists." });
+    }
+    const user = await User.create({ name, email, contact, countryCode, coursename, location, status, notes, assignedTo });
+    await logAction(req.admin.id, 'create_user', 'User', { userId: user._id });
+    res.status(201).json({ message: "User created.", user });
+  } catch (e) {
+    res.status(500).json({ message: 'Error creating user.', error: e.message });
+  }
+});
+
+// Update user (lead)
+app.put('/api/users/:id', authMiddleware, requireRole(['SuperAdmin','Admin','EditMode']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const allowedFields = ['name','email','contact','countryCode','coursename','location','status','notes','assignedTo'];
+    const updateFields = {};
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) updateFields[key] = req.body[key];
+    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid user ID." });
+    const user = await User.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: "User not found." });
+    await logAction(req.admin.id, 'update_user', 'User', { userId: id, updateFields });
+    res.status(200).json({ message: "User updated.", user });
+  } catch (e) {
+    res.status(500).json({ message: 'Error updating user.', error: e.message });
+  }
+});
+
+// Delete user (lead)
+app.delete('/api/users/:id', authMiddleware, requireRole(['SuperAdmin','Admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid user ID." });
+    const user = await User.findByIdAndDelete(id);
+    if (!user) return res.status(404).json({ message: "User not found." });
+    await logAction(req.admin.id, 'delete_user', 'User', { userId: id });
+    res.status(200).json({ message: "User deleted." });
+  } catch (e) {
+    res.status(500).json({ message: 'Error deleting user.', error: e.message });
   }
 });
 
