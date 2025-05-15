@@ -45,19 +45,6 @@ app.use(cors({
 // --- Middleware ---
 app.use(bodyParser.json());
 
-// --- MongoDB Connection ---
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => {
-  console.log("Connected to MongoDB");
-})
-.catch((err) => {
-  console.error("FATAL: Error connecting to MongoDB:", err);
-  process.exit(1);
-});
-
 // --- Mongoose Schema and Model ---
 const userSchema = new mongoose.Schema({
   name: { type: String, required: [true, 'Name is required'], trim: true },
@@ -88,9 +75,12 @@ const User = mongoose.model("User", userSchema);
 const adminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true }, // hashed
+  email: { type: String, trim: true, lowercase: true },
   role: { type: String, enum: ['SuperAdmin','Admin','ViewMode','EditMode'], default: 'Admin' },
   active: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
+  lastLogin: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' }
 });
 const Admin = mongoose.model("Admin", adminSchema);
 
@@ -103,6 +93,58 @@ const auditLogSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
+
+// --- Login History Schema ---
+const loginHistorySchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
+  ipAddress: { type: String, default: 'unknown' },
+  userAgent: { type: String, default: 'unknown' },
+  success: { type: Boolean, required: true },
+  loginAt: { type: Date, default: Date.now }
+});
+const LoginHistory = mongoose.model('LoginHistory', loginHistorySchema);
+
+// --- Activity Log Schema ---
+const activityLogSchema = new mongoose.Schema({
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
+  action: { type: String, required: true },
+  page: { type: String },
+  details: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+
+// --- Role Permission Schema ---
+const rolePermissionSchema = new mongoose.Schema({
+  role: { type: String, enum: ['SuperAdmin','Admin','ViewMode','EditMode'], required: true, unique: true },
+  permissions: {
+    users: {
+      create: { type: Boolean, default: false },
+      read: { type: Boolean, default: false },
+      update: { type: Boolean, default: false },
+      delete: { type: Boolean, default: false }
+    },
+    leads: {
+      create: { type: Boolean, default: false },
+      read: { type: Boolean, default: false },
+      update: { type: Boolean, default: false },
+      delete: { type: Boolean, default: false }
+    },
+    admins: {
+      create: { type: Boolean, default: false },
+      read: { type: Boolean, default: false },
+      update: { type: Boolean, default: false },
+      delete: { type: Boolean, default: false }
+    },
+    analytics: {
+      view: { type: Boolean, default: false }
+    },
+    auditLogs: {
+      view: { type: Boolean, default: false }
+    }
+  }
+});
+const RolePermission = mongoose.model('RolePermission', rolePermissionSchema);
 
 // --- JWT Helper Functions ---
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
@@ -138,6 +180,89 @@ function requireRole(roles) {
 async function logAction(adminId, action, target, metadata={}) {
   try { await AuditLog.create({ adminId, action, target, metadata }); } catch(e){ console.error('AuditLog error', e); }
 }
+
+// Create a function to track admin activity
+async function trackActivity(adminId, action, page = '', details = '') {
+  try {
+    await ActivityLog.create({ adminId, action, page, details });
+  } catch(e) {
+    console.error('ActivityLog error', e);
+  }
+}
+
+// --- Initialize Default Role Permissions if not exists ---
+const initializeRolePermissions = async () => {
+  try {
+    const count = await RolePermission.countDocuments();
+    if (count === 0) {
+      // Default SuperAdmin permissions (all access)
+      await RolePermission.create({
+        role: 'SuperAdmin',
+        permissions: {
+          users: { create: true, read: true, update: true, delete: true },
+          leads: { create: true, read: true, update: true, delete: true },
+          admins: { create: true, read: true, update: true, delete: true },
+          analytics: { view: true },
+          auditLogs: { view: true }
+        }
+      });
+
+      // Default Admin permissions
+      await RolePermission.create({
+        role: 'Admin',
+        permissions: {
+          users: { create: true, read: true, update: true, delete: true },
+          leads: { create: true, read: true, update: true, delete: true },
+          admins: { create: false, read: true, update: false, delete: false },
+          analytics: { view: true },
+          auditLogs: { view: false }
+        }
+      });
+
+      // Default ViewMode permissions
+      await RolePermission.create({
+        role: 'ViewMode',
+        permissions: {
+          users: { create: false, read: true, update: false, delete: false },
+          leads: { create: false, read: true, update: false, delete: false },
+          admins: { create: false, read: false, update: false, delete: false },
+          analytics: { view: false },
+          auditLogs: { view: false }
+        }
+      });
+
+      // Default EditMode permissions
+      await RolePermission.create({
+        role: 'EditMode',
+        permissions: {
+          users: { create: true, read: true, update: true, delete: false },
+          leads: { create: true, read: true, update: true, delete: false },
+          admins: { create: false, read: false, update: false, delete: false },
+          analytics: { view: false },
+          auditLogs: { view: false }
+        }
+      });
+
+      console.log('Default role permissions initialized');
+    }
+  } catch (error) {
+    console.error('Error initializing role permissions:', error);
+  }
+};
+
+// --- MongoDB Connection ---
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log("Connected to MongoDB");
+  initializeRolePermissions();
+})
+.catch((err) => {
+  console.error("FATAL: Error connecting to MongoDB:", err);
+  process.exit(1);
+});
 
 // --- API Routes ---
 
@@ -302,24 +427,186 @@ app.delete("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin'])
   }
 });
 
+// === Bulk Lead Operations ===
+// Bulk update leads
+app.put('/api/leads/bulk-update', authMiddleware, requireRole(['SuperAdmin', 'Admin', 'EditMode']), async (req, res) => {
+  try {
+    const { leadIds, updateData } = req.body;
+
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({ message: 'No lead IDs provided.' });
+    }
+
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'No update data provided.' });
+    }
+
+    // Filter update fields
+    const allowedFields = ['status', 'notes', 'assignedTo'];
+    const updateFields = {};
+    for (const key of allowedFields) {
+      if (updateData[key] !== undefined) updateFields[key] = updateData[key];
+    }
+
+    // Update documents
+    const result = await User.updateMany(
+      { _id: { $in: leadIds } },
+      { $set: updateFields }
+    );
+
+    await logAction(req.admin.id, 'bulk_update_leads', 'User', { count: result.modifiedCount, updateFields });
+
+    res.status(200).json({
+      message: `Updated ${result.modifiedCount} leads.`,
+      modifiedCount: result.modifiedCount
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'Error updating leads.', error: e.message });
+  }
+});
+
+// Bulk delete leads
+app.delete('/api/leads/bulk-delete', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
+  try {
+    const { leadIds } = req.body;
+
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({ message: 'No lead IDs provided.' });
+    }
+
+    // Delete documents
+    const result = await User.deleteMany({ _id: { $in: leadIds } });
+
+    await logAction(req.admin.id, 'bulk_delete_leads', 'User', { count: result.deletedCount, leadIds });
+
+    res.status(200).json({
+      message: `Deleted ${result.deletedCount} leads.`,
+      deletedCount: result.deletedCount
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'Error deleting leads.', error: e.message });
+  }
+});
+
+// === Lead Filters ===
+app.get('/api/leads/filter', authMiddleware, requireRole(['SuperAdmin', 'Admin', 'EditMode', 'ViewMode']), async (req, res) => {
+  try {
+    const { status, assignedTo, startDate, endDate, coursename, location, search } = req.query;
+
+    // Build filter
+    const filter = {};
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (assignedTo) {
+      if (assignedTo === 'unassigned') {
+        filter.assignedTo = null;
+      } else if (assignedTo === 'assigned') {
+        filter.assignedTo = { $ne: null };
+      } else {
+        filter.assignedTo = assignedTo;
+      }
+    }
+
+    if (startDate && endDate) {
+      filter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    } else if (startDate) {
+      filter.createdAt = { $gte: new Date(startDate) };
+    } else if (endDate) {
+      filter.createdAt = { $lte: new Date(endDate) };
+    }
+
+    if (coursename) {
+      filter.coursename = coursename;
+    }
+
+    if (location) {
+      filter.location = location;
+    }
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { contact: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Get filtered leads
+    const leads = await User.find(filter)
+      .sort({ createdAt: -1 })
+      .populate('assignedTo', 'username role')
+      .lean();
+
+    res.status(200).json(leads);
+  } catch (e) {
+    res.status(500).json({ message: 'Error filtering leads.', error: e.message });
+  }
+});
+
 // === Admin Login Route (returns JWT) ===
 app.post("/api/admin-login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password required.' });
   }
+
+  // Track login attempt for security
+  const loginData = {
+    ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+    userAgent: req.headers['user-agent'] || 'unknown',
+    success: false
+  };
+
   try {
     const admin = await Admin.findOne({ username, active: true });
     if (!admin) {
+      // Save failed login attempt
+      await LoginHistory.create({
+        ...loginData,
+        adminId: null,
+        success: false
+      });
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
+
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
+      // Save failed login attempt with admin ID
+      await LoginHistory.create({
+        ...loginData,
+        adminId: admin._id,
+        success: false
+      });
       return res.status(401).json({ message: 'Invalid username or password.' });
     }
+
+    // Update last login time
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    // Save successful login
+    await LoginHistory.create({
+      ...loginData,
+      adminId: admin._id,
+      success: true
+    });
+
     const token = generateToken(admin);
     await logAction(admin._id, 'login', 'Admin', {});
-    return res.status(200).json({ message: 'Login successful.', token, role: admin.role, username: admin.username });
+
+    return res.status(200).json({
+      message: 'Login successful.',
+      token,
+      role: admin.role,
+      username: admin.username,
+      id: admin._id
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
@@ -331,7 +618,7 @@ app.post("/api/admin-login", async (req, res) => {
 // Create Admin
 app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
   try {
-    const { username, password, role } = req.body;
+    const { username, password, role, email } = req.body;
     if (!username || !password || !role) {
       return res.status(400).json({ message: 'Username, password, and role are required.' });
     }
@@ -343,7 +630,7 @@ app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req,
       return res.status(409).json({ message: 'Username already exists.' });
     }
     const hashed = await bcrypt.hash(password, 10);
-    const admin = await Admin.create({ username, password: hashed, role });
+    const admin = await Admin.create({ username, password: hashed, role, email, createdBy: req.admin.id });
     await logAction(req.admin.id, 'create_admin', 'Admin', { adminId: admin._id, username, role });
     res.status(201).json({ message: 'Admin created.', admin: { id: admin._id, username: admin.username, role: admin.role, active: admin.active } });
   } catch (e) {
@@ -365,7 +652,7 @@ app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, 
 app.put('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, active, password } = req.body;
+    const { role, active, password, email } = req.body;
     const updateFields = {};
     if (role) {
       if (!['SuperAdmin','Admin','ViewMode','EditMode'].includes(role)) {
@@ -375,6 +662,7 @@ app.put('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (r
     }
     if (typeof active === 'boolean') updateFields.active = active;
     if (password) updateFields.password = await bcrypt.hash(password, 10);
+    if (email) updateFields.email = email;
     const admin = await Admin.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
     if (!admin) return res.status(404).json({ message: 'Admin not found.' });
     await logAction(req.admin.id, 'update_admin', 'Admin', { adminId: id, updateFields });
@@ -397,6 +685,48 @@ app.delete('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async
     res.status(200).json({ message: 'Admin deleted.' });
   } catch (e) {
     res.status(500).json({ message: 'Error deleting admin.', error: e.message });
+  }
+});
+
+// === Role Permissions Management ===
+// Get role permissions
+app.get('/api/role-permissions', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const permissions = await RolePermission.find().lean();
+    res.status(200).json(permissions);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching role permissions.', error: e.message });
+  }
+});
+
+// Update role permissions
+app.put('/api/role-permissions/:role', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+  try {
+    const { role } = req.params;
+    const { permissions } = req.body;
+
+    if (!permissions) {
+      return res.status(400).json({ message: 'Permissions are required.' });
+    }
+
+    if (!['Admin', 'ViewMode', 'EditMode'].includes(role)) {
+      return res.status(400).json({ message: 'Cannot modify SuperAdmin permissions.' });
+    }
+
+    const updatedPermission = await RolePermission.findOneAndUpdate(
+      { role },
+      { permissions },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPermission) {
+      return res.status(404).json({ message: 'Role not found.' });
+    }
+
+    await logAction(req.admin.id, 'update_role_permissions', 'RolePermission', { role, permissions });
+    res.status(200).json({ message: 'Role permissions updated.', permission: updatedPermission });
+  } catch (e) {
+    res.status(500).json({ message: 'Error updating role permissions.', error: e.message });
   }
 });
 
@@ -476,6 +806,125 @@ app.delete('/api/users/:id', authMiddleware, requireRole(['SuperAdmin','Admin'])
     res.status(200).json({ message: "User deleted." });
   } catch (e) {
     res.status(500).json({ message: 'Error deleting user.', error: e.message });
+  }
+});
+
+// === Get Current Admin Info ===
+app.get('/api/current-admin', authMiddleware, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id).select('-password').lean();
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found.' });
+    }
+    res.status(200).json(admin);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching admin info.', error: e.message });
+  }
+});
+
+// === Track Activity ===
+app.post('/api/activity', authMiddleware, async (req, res) => {
+  try {
+    const { action, page, details } = req.body;
+    await trackActivity(req.admin.id, action, page, details);
+    res.status(200).json({ message: 'Activity logged.' });
+  } catch (e) {
+    res.status(500).json({ message: 'Error logging activity.', error: e.message });
+  }
+});
+
+// === Get Admin Activity Logs ===
+app.get('/api/admin-activity', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
+  try {
+    const { adminId } = req.query;
+    const query = adminId ? { adminId } : {};
+    const logs = await ActivityLog.find(query)
+      .populate('adminId', 'username role')
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    res.status(200).json(logs);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching activity logs.', error: e.message });
+  }
+});
+
+// === Get Login History ===
+app.get('/api/login-history', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
+  try {
+    const { adminId } = req.query;
+    const query = adminId ? { adminId } : {};
+    const history = await LoginHistory.find(query)
+      .populate('adminId', 'username role')
+      .sort({ loginAt: -1 })
+      .limit(200)
+      .lean();
+    res.status(200).json(history);
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching login history.', error: e.message });
+  }
+});
+
+// === Admin Analytics ===
+app.get('/api/analytics', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
+  try {
+    // Count total leads
+    const totalLeads = await User.countDocuments();
+
+    // Count leads by status
+    const leadsByStatus = await User.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    // Count leads created in the last 7 days
+    const lastWeekLeads = await User.countDocuments({
+      createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+    });
+
+    // Count leads created in the last 30 days
+    const lastMonthLeads = await User.countDocuments({
+      createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+    });
+
+    // Count leads by course
+    const leadsByCourse = await User.aggregate([
+      { $group: { _id: '$coursename', count: { $sum: 1 } } }
+    ]);
+
+    // Count leads by location
+    const leadsByLocation = await User.aggregate([
+      { $group: { _id: '$location', count: { $sum: 1 } } }
+    ]);
+
+    // Get total admins
+    const totalAdmins = await Admin.countDocuments();
+
+    // Get active admins
+    const activeAdmins = await Admin.countDocuments({ active: true });
+
+    // Get admin counts by role
+    const adminsByRole = await Admin.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+
+    // Response
+    res.status(200).json({
+      leads: {
+        total: totalLeads,
+        byStatus: leadsByStatus,
+        lastWeek: lastWeekLeads,
+        lastMonth: lastMonthLeads,
+        byCourse: leadsByCourse,
+        byLocation: leadsByLocation
+      },
+      admins: {
+        total: totalAdmins,
+        active: activeAdmins,
+        byRole: adminsByRole
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'Error fetching analytics.', error: e.message });
   }
 });
 

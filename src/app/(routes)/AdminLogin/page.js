@@ -5,15 +5,28 @@ import { useRouter } from "next/navigation";
 import styles from "@/styles/adminlogin/AdminLogin.module.css";
 
 const AdminLogin = () => {
-  const [username, set_username] = useState("");
-  const [password, set_password] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handle_submit = async (e, target_page) => {
+  // Check if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem("adminToken");
+    if (token) {
+      const role = localStorage.getItem("adminRole");
+      if (role === "SuperAdmin") {
+        router.push("/superadmin");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [router]);
+
+  const handleSubmit = async (e, targetPage) => {
     e.preventDefault();
     setLoading(true);
-  
+
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
       const res = await fetch(`${apiBaseUrl}/api/admin-login`, {
@@ -21,15 +34,24 @@ const AdminLogin = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-  
+
       const data = await res.json();
-  
+
       if (res.ok) {
+        // Store auth info in localStorage
+        localStorage.setItem("adminToken", data.token);
+        localStorage.setItem("adminRole", data.role);
+        localStorage.setItem("adminUsername", data.username);
+        localStorage.setItem("adminId", data.id);
         localStorage.setItem("isAdminLoggedIn", "true");
-        if (target_page.startsWith("http")) {
-          window.location.href = target_page;
+
+        // Redirect based on role
+        if (data.role === "SuperAdmin" && targetPage === "/dashboard") {
+          router.push("/superadmin");
+        } else if (targetPage.startsWith("http")) {
+          window.location.href = targetPage;
         } else {
-          router.push(target_page);
+          router.push(targetPage);
         }
       } else {
         alert(data.message || "Admin login failed");
@@ -38,14 +60,14 @@ const AdminLogin = () => {
       console.error("Login error:", err);
       alert("Server error. Please try again.");
     }
-  
+
     setLoading(false);
   };
-  
+
   return (
     <section className={styles.admin_login_section}>
       <div className={styles.form_box}>
-        <form onSubmit={(e) => handle_submit(e, "/dashboard")}>
+        <form onSubmit={(e) => handleSubmit(e, "/dashboard")}>
           <h2>Admin Log-In</h2>
           <div className={styles.input_box}>
             <ion-icon name="person-outline"></ion-icon>
@@ -54,7 +76,7 @@ const AdminLogin = () => {
               name="username"
               id="admin_username"
               value={username}
-              onChange={(e) => set_username(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
             <label htmlFor="admin_username">Username</label>
@@ -67,7 +89,7 @@ const AdminLogin = () => {
               name="password"
               id="login_password"
               value={password}
-              onChange={(e) => set_password(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               required
             />
             <label htmlFor="login_password">Password</label>
@@ -76,7 +98,7 @@ const AdminLogin = () => {
             <button
               type="button"
               className={styles.admin_btn}
-              onClick={(e) => handle_submit(e, "/dashboard")}
+              onClick={(e) => handleSubmit(e, "/dashboard")}
               disabled={loading}
             >
               {loading ? "Logging In..." : "Login In to Dashboard"}
@@ -84,7 +106,7 @@ const AdminLogin = () => {
             <button
               type="button"
               className={styles.admin_btn}
-              onClick={(e) => handle_submit(e, "https://blog-frontend-psi-bay.vercel.app/")}
+              onClick={(e) => handleSubmit(e, "https://blog-frontend-psi-bay.vercel.app/")}
               disabled={loading}
             >
               {loading ? "Logging In..." : "Login In to Blogs"}

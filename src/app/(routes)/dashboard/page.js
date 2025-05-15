@@ -9,7 +9,39 @@ import {
   FaSignOutAlt,
   FaCheckSquare,
   FaSquare,
+  FaUserCog,
 } from "react-icons/fa";
+
+// Utility function for authenticated API requests
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem("adminToken");
+  if (!token) {
+    throw new Error("Not authenticated");
+  }
+
+  const headers = {
+    ...options.headers,
+    Authorization: `Bearer ${token}`,
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    // Token expired or invalid
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminRole");
+    localStorage.removeItem("adminUsername");
+    localStorage.removeItem("adminId");
+    localStorage.removeItem("isAdminLoggedIn");
+    window.location.href = "/AdminLogin";
+    throw new Error("Session expired. Please login again.");
+  }
+
+  return response;
+};
 
 const Dashboard = () => {
   const [leads, setLeads] = useState([]);
@@ -20,6 +52,7 @@ const Dashboard = () => {
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [userRole, setUserRole] = useState("");
   const router = useRouter();
   const leadsPerPage = 30;
 
@@ -40,11 +73,15 @@ const Dashboard = () => {
   // Authentication check
   useEffect(() => {
     const checkAuth = () => {
-      const isLoggedIn = localStorage.getItem("isAdminLoggedIn");
-      if (!isLoggedIn || isLoggedIn !== "true") {
+      const token = localStorage.getItem("adminToken");
+      const role = localStorage.getItem("adminRole");
+
+      if (!token) {
         router.push("/AdminLogin");
         return false;
       }
+
+      setUserRole(role);
       return true;
     };
 
@@ -71,7 +108,8 @@ const Dashboard = () => {
     try {
       setLoading(true);
       setError(null); // Clear previous errors before fetching
-      const response = await fetch(
+
+      const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/leads`
       );
 
@@ -111,8 +149,8 @@ const Dashboard = () => {
 
     try {
       setDeleteLoading(true);
-      const response = await fetch(
-        `https://serverbackend-0nvg.onrender.com/api/leads/${id}`,
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${id}`,
         {
           method: "DELETE",
         }
@@ -152,40 +190,68 @@ const Dashboard = () => {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const id of selectedLeads) {
-      try {
-        const response = await fetch(
-          `https://serverbackend-0nvg.onrender.com/api/leads/${id}`,
-          {
-            method: "DELETE",
-          }
-        );
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          errorCount++;
+    // Using bulk delete endpoint if available
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/bulk-delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ leadIds: selectedLeads }),
         }
-      } catch (error) {
-        console.error(`Error deleting lead ${id}:`, error.message);
-        errorCount++;
-      }
-    }
-
-    if (successCount > 0) {
-      setLeads((prevLeads) =>
-        prevLeads.filter((lead) => !selectedLeads.includes(lead._id))
       );
-      setSelectedLeads([]);
-      setSelectAll(false);
+
+      if (response.ok) {
+        const result = await response.json();
+        successCount = result.deletedCount;
+
+        setLeads((prevLeads) =>
+          prevLeads.filter((lead) => !selectedLeads.includes(lead._id))
+        );
+        setSelectedLeads([]);
+        setSelectAll(false);
+      } else {
+        // Fall back to individual deletion if bulk delete fails
+        for (const id of selectedLeads) {
+          try {
+            const response = await fetchWithAuth(
+              `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${id}`,
+              {
+                method: "DELETE",
+              }
+            );
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
+            console.error(`Error deleting lead ${id}:`, error.message);
+            errorCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          setLeads((prevLeads) =>
+            prevLeads.filter((lead) => !selectedLeads.includes(lead._id))
+          );
+          setSelectedLeads([]);
+          setSelectAll(false);
+        }
+      }
+
       alert(
         `Successfully deleted ${successCount} leads${errorCount > 0 ? `. Failed to delete ${errorCount} leads.` : ""}`
       );
-    } else if (errorCount > 0) {
-      alert(`Failed to delete ${errorCount} leads. Please try again.`);
+    } catch (error) {
+      console.error("Error in bulk delete:", error.message);
+      alert(`Failed to delete leads. Please try again.`);
+    } finally {
+      setDeleteLoading(false);
     }
-
-    setDeleteLoading(false);
   };
 
   // Handle selection of a single lead
@@ -268,8 +334,17 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
+    // Clear all auth data
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminRole");
+    localStorage.removeItem("adminUsername");
+    localStorage.removeItem("adminId");
     localStorage.removeItem("isAdminLoggedIn");
     router.push("/AdminLogin");
+  };
+
+  const goToSuperAdmin = () => {
+    router.push("/superadmin");
   };
 
   // If not authenticated, show loading screen
@@ -287,6 +362,11 @@ const Dashboard = () => {
       <div className={styles.dashboardHeader}>
         <h2 className={styles.dashboardTitle}>Contact Leads Dashboard</h2>
         <div className={styles.headerButtons}>
+          {userRole === "SuperAdmin" && (
+            <button onClick={goToSuperAdmin} className={styles.actionButton}>
+              <FaUserCog /> Admin Panel
+            </button>
+          )}
           <button onClick={downloadCSV} className={styles.actionButton}>
             <FaDownload /> Export CSV
           </button>
