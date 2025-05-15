@@ -1,0 +1,410 @@
+.dashboardContainer {
+  padding: 30px;
+  background-color: #f5f7fb;
+  max-width: 100%;
+  overflow-x: hidden;
+  min-height: 100vh;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dashboardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+  border-bottom: 1px solid #e1e5ed;
+  padding-bottom: 20px;
+}
+
+.dashboardTitle {
+  font-size: 28px;
+  margin: 0;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+}
+
+.headerButtons {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.actionButton:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.logoutButton:hover {
+  background-color: #c82333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tableCard {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.table th,
+.table td {
+  padding: 14px 15px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  background-color: #4caf50;
+  color: white;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.3s;
+}
+
+.table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.table tbody tr:hover {
+  background-color: #f0f7f0;
+}
+
+.table tr:last-child {
+  border-bottom: none;
+}
+
+.checkboxColumn {
+  width: 48px;
+  text-align: center;
+}
+
+.checkboxWrapper {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.checkboxWrapper:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.checkIcon {
+  font-size: 20px;
+  color: #4caf50;
+}
+
+.bulkActionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #e8f5e9;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  color: #2e7d32;
+  border-left: 4px solid #4caf50;
+}
+
+.bulkDeleteButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  font-weight: 500;
+}
+
+.bulkDeleteButton:hover:not(:disabled) {
+  background-color: #bd2130;
+}
+
+.bulkDeleteButton:disabled {
+  background-color: #e9acb1;
+  cursor: not-allowed;
+}
+
+.paginationControls {
+  display: flex;
+  justify-content: center;
+  margin-top: 25px;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pageIndicator {
+  font-weight: 500;
+  color: #555;
+  background-color: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.paginationButton {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: all 0.3s;
+  white-space: nowrap;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.paginationButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.paginationButton:not(:disabled):hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #4caf50;
+  gap: 20px;
+}
+
+.loader {
+  border: 4px solid rgba(76, 175, 80, 0.2);
+  border-radius: 50%;
+  border-top: 4px solid #4caf50;
+  width: 50px;
+  height: 50px;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.errorMessage {
+  text-align: center;
+  padding: 30px;
+  color: #dc3545;
+  font-weight: bold;
+  background-color: #ffe6e6;
+  border-radius: 5px;
+  margin: 20px 0;
+}
+
+.deleteButton {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteButton:hover:not(:disabled) {
+  background-color: #bd2130;
+  transform: translateY(-2px);
+}
+
+.deleteButton:disabled {
+  background-color: #e9acb1;
+  cursor: not-allowed;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Responsive Styles */
+@media screen and (max-width: 992px) {
+  .dashboardContainer {
+    padding: 20px;
+  }
+
+  .dashboardTitle {
+    font-size: 24px;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .dashboardTitle {
+    font-size: 22px;
+    text-align: center;
+    width: 100%;
+  }
+
+  .dashboardHeader {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .headerButtons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bulkActionBar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .table {
+    border: 0;
+    min-width: unset;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table tbody tr {
+    display: block;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    background-color: white;
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    text-align: right;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 15px;
+  }
+
+  .table td:last-child {
+    border-bottom: 0;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    text-align: left;
+    margin-right: 10px;
+  }
+
+  .checkboxColumn {
+    justify-content: flex-end !important;
+  }
+
+  .paginationButton {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+
+  .deleteButton {
+    width: auto;
+    padding: 6px 10px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .dashboardContainer {
+    padding: 15px;
+  }
+
+  .paginationControls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .actionButton,
+  .logoutButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .headerButtons {
+    flex-direction: column;
+    width: 100%;
+  }
+}

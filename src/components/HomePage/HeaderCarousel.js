@@ -8,7 +8,6 @@ import Btnform from "./Btnform";
 import Image from "next/image";
 import Link from "next/link";
 import AnimatedLogo2 from "@/components/AnimatedLogo2";
-import LargeAnimatedLogo from "@/components/LargeAnimatedLogo";
 
 // Constants moved outside component to avoid re-creation on render
 const TEXTS = [
@@ -85,7 +84,7 @@ const CareerSlide = ({ onButtonClick }) => (
       <CompanyLogos />
     </div>
     <div className={styles.carouselImage}>
-      <LargeAnimatedLogo />
+      <AnimatedLogo2 />
     </div>
   </div>
 );
