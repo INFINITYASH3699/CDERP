@@ -1,0 +1,14 @@
+{
+  "redirects": [
+    {
+      "source": "/sap-(:path<[^/]*>)-course-in-(:city<[^/]*>[A-Z][^/]*)",
+      "destination": "/sap-$path-course-in-$city",
+      "permanent": true
+    },
+    {
+      "source": "/(:path<.*>[A-Z].*)",
+      "destination": "/$path",
+      "permanent": true
+    }
+  ]
+}
