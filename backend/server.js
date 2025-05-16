@@ -25,7 +25,8 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const allowedOrigins = [
     'https://connectingdotserp.com', // Main domain
     'https://www.connectingdotserp.com', // Optional www subdomain
-    'http://localhost:3000' // For local development
+    'http://localhost:3000', // For local development
+    'http://localhost:3001' // For local development
 ];
 
 app.use(cors({
@@ -421,15 +422,86 @@ app.put("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','Edi
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid lead ID format." });
     }
-    const updatedUser = await User.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
-    if (!updatedUser) {
+
+    // Store original lead data for audit log
+    const originalLead = await User.findById(id).lean();
+    if (!originalLead) {
       return res.status(404).json({ message: "Lead not found." });
     }
-    await logAction(req.admin.id, 'update_lead', 'User', { leadId: id, updateFields, userId: id });
+
+    const updatedUser = await User.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+
+    // Prepare detailed metadata for audit log
+    const metadataWithChanges = {
+      userId: id,
+      leadName: originalLead.name,
+      leadEmail: originalLead.email,
+      leadContact: originalLead.contact,
+      updateFields: {},
+    };
+
+    // Track specific changes for each field
+    for (const key of Object.keys(updateFields)) {
+      metadataWithChanges.updateFields[key] = {
+        from: originalLead[key],
+        to: updateFields[key]
+      };
+    }
+
+    await logAction(req.admin.id, 'update_lead', 'User', metadataWithChanges);
+
     res.status(200).json({ message: "Lead updated successfully.", lead: updatedUser });
   } catch (error) {
     console.error(`Error updating lead with ID (${req.params.id}):`, error);
     res.status(500).json({ message: "Internal Server Error occurred while updating.", error: error.message });
+  }
+});
+
+// === Update Lead Route (PATCH version) (Admin Protected) ===
+app.patch("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','EditMode']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateFields = {};
+    const allowedFields = ['name','email','contact','countryCode','coursename','location','status','notes','assignedTo','contactedScore','contactedComment'];
+
+    for (const key of allowedFields) {
+      if (req.body[key] !== undefined) updateFields[key] = req.body[key];
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid lead ID format." });
+    }
+
+    // Store original lead data for audit log
+    const originalLead = await User.findById(id).lean();
+    if (!originalLead) {
+      return res.status(404).json({ message: "Lead not found." });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
+
+    // Prepare detailed metadata for audit log
+    const metadataWithChanges = {
+      userId: id,
+      leadName: originalLead.name,
+      leadEmail: originalLead.email,
+      leadContact: originalLead.contact,
+      updateFields: {},
+    };
+
+    // Track specific changes for each field
+    for (const key of Object.keys(updateFields)) {
+      metadataWithChanges.updateFields[key] = {
+        from: originalLead[key],
+        to: updateFields[key]
+      };
+    }
+
+    await logAction(req.admin.id, 'update_lead', 'User', metadataWithChanges);
+    res.status(200).json({ message: "Lead updated successfully.", lead: updatedUser });
+  } catch (error) {
+    console.error(`Error updating lead with ID (${req.params.id}):`, error);
+    res.status(500).json({ message: "Failed to update lead", error: error.message });
   }
 });
 
@@ -440,11 +512,26 @@ app.delete("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin'])
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid lead ID format." });
     }
-    const deletedUser = await User.findByIdAndDelete(id);
-    if (!deletedUser) {
+
+    // Get lead data before deletion for audit log
+    const leadToDelete = await User.findById(id).lean();
+    if (!leadToDelete) {
       return res.status(404).json({ message: "Lead not found." });
     }
-    await logAction(req.admin.id, 'delete_lead', 'User', { leadId: id, userId: id });
+
+    const deletedUser = await User.findByIdAndDelete(id);
+
+    // Include detailed information in audit log
+    await logAction(req.admin.id, 'delete_lead', 'User', {
+      leadId: id,
+      userId: id,
+      leadName: leadToDelete.name,
+      leadEmail: leadToDelete.email,
+      leadContact: leadToDelete.contact,
+      leadStatus: leadToDelete.status,
+      deletedAt: new Date()
+    });
+
     console.log("Lead deleted successfully:", id);
     res.status(200).json({ message: "Lead deleted successfully." });
   } catch (error) {
@@ -474,13 +561,29 @@ app.put('/api/leads/bulk-update', authMiddleware, requireRole(['SuperAdmin', 'Ad
       if (updateData[key] !== undefined) updateFields[key] = updateData[key];
     }
 
+    // Get original lead data for audit logs
+    const originalLeads = await User.find({ _id: { $in: leadIds } }).lean();
+
+    // Extract basic info for audit logs
+    const leadsInfo = originalLeads.map(lead => ({
+      id: lead._id,
+      name: lead.name,
+      email: lead.email,
+      contact: lead.contact
+    }));
+
     // Update documents
     const result = await User.updateMany(
       { _id: { $in: leadIds } },
       { $set: updateFields }
     );
 
-    await logAction(req.admin.id, 'bulk_update_leads', 'User', { count: result.modifiedCount, updateFields });
+    // Enhanced audit logging
+    await logAction(req.admin.id, 'bulk_update_leads', 'User', {
+      count: result.modifiedCount,
+      updateFields,
+      affectedLeads: leadsInfo
+    });
 
     res.status(200).json({
       message: `Updated ${result.modifiedCount} leads.`,
@@ -500,10 +603,28 @@ app.delete('/api/leads/bulk-delete', authMiddleware, requireRole(['SuperAdmin', 
       return res.status(400).json({ message: 'No lead IDs provided.' });
     }
 
+    // Get lead data before deletion for audit logs
+    const leadsToDelete = await User.find({ _id: { $in: leadIds } }).lean();
+
+    // Extract basic info for audit logs
+    const leadsInfo = leadsToDelete.map(lead => ({
+      id: lead._id,
+      name: lead.name,
+      email: lead.email,
+      contact: lead.contact,
+      status: lead.status
+    }));
+
     // Delete documents
     const result = await User.deleteMany({ _id: { $in: leadIds } });
 
-    await logAction(req.admin.id, 'bulk_delete_leads', 'User', { count: result.deletedCount, leadIds });
+    // Enhanced audit logging
+    await logAction(req.admin.id, 'bulk_delete_leads', 'User', {
+      count: result.deletedCount,
+      leadIds,
+      deletedLeads: leadsInfo,
+      deletedAt: new Date()
+    });
 
     res.status(200).json({
       message: `Deleted ${result.deletedCount} leads.`,
