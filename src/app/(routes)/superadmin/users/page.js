@@ -21,6 +21,30 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 
+// Array of 20 distinct colors for admin users
+const COLOR_OPTIONS = [
+  '#4299e1', // Blue
+  '#48bb78', // Green
+  '#ed8936', // Orange
+  '#f56565', // Red
+  '#9f7aea', // Purple
+  '#667eea', // Indigo
+  '#f687b3', // Pink
+  '#ecc94b', // Yellow
+  '#38b2ac', // Teal
+  '#fc8181', // Light Red
+  '#68d391', // Light Green
+  '#63b3ed', // Light Blue
+  '#4c51bf', // Dark Blue
+  '#6b46c1', // Dark Purple
+  '#dd6b20', // Dark Orange
+  '#805ad5', // Medium Purple
+  '#b794f4', // Light Purple
+  '#9ae6b4', // Light Mint
+  '#f6ad55', // Light Orange
+  '#feb2b2'  // Light Coral
+];
+
 // Authenticated fetch utility
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem("adminToken");
@@ -176,23 +200,39 @@ const UserManagement = () => {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [userRole, setUserRole] = useState(null); // Store current user's role
+
+  // Get a list of colors already in use by other admins
+  const getUsedColors = (currentAdminId = null) => {
+    return admins
+      .filter(admin => currentAdminId ? admin._id !== currentAdminId : true)
+      .map(admin => admin.color)
+      .filter(Boolean); // Remove undefined/null values
+  };
+
+  // Get available colors (not used by other admins)
+  const getAvailableColors = (currentAdminId = null) => {
+    const usedColors = getUsedColors(currentAdminId);
+    return COLOR_OPTIONS.filter(color => !usedColors.includes(color));
+  };
 
   // Authentication check
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
+    setUserRole(role);
 
     if (!token) {
       router.push("/AdminLogin");
       return;
     }
 
-    if (role !== "SuperAdmin") {
+    if (role !== "SuperAdmin" && role !== "Admin") {
       router.push("/dashboard");
       return;
     }
 
-    // Fetch users
+    // Fetch admins data (will be used if SuperAdmin, and for filtering available colors)
     fetchAdmins();
   }, [router]);
 
@@ -519,6 +559,29 @@ const UserManagement = () => {
     );
   }
 
+  // If Admin role, show restricted message
+  if (userRole === "Admin") {
+    return (
+      <SuperAdminLayout activePage="users">
+        <div style={{
+          padding: "2rem",
+          textAlign: "center",
+          backgroundColor: "#fff5f5",
+          borderRadius: "8px",
+          border: "1px solid #fc8181",
+          margin: "2rem auto",
+          maxWidth: "800px"
+        }}>
+          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+          <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+            You do not have access to the User Management section. Please contact a SuperAdmin for assistance.
+          </p>
+          <p>Your current role permissions do not allow access to this functionality.</p>
+        </div>
+      </SuperAdminLayout>
+    );
+  }
+
   return (
     <SuperAdminLayout activePage="users">
       <div className={styles.pageHeader}>
@@ -732,21 +795,26 @@ const UserManagement = () => {
                         <label className={styles.formLabel} htmlFor="color">
                           Color
                         </label>
-                        <input
-                          type="color"
+                        <select
                           id="color"
                           name="color"
-                          value={formData.color || "#4299e1"}
+                          value={formData.color}
                           onChange={handleInputChange}
-                          className={styles.formInput}
-                          style={{
-                            width: "100%",
-                            height: "2.5rem",
-                            padding: "0.25rem",
-                            cursor: "pointer",
-                            border: "1px solid #ddd"
-                          }}
-                        />
+                          className={styles.formSelect}
+                        >
+                          {/* Include current color if editing even if used elsewhere */}
+                          {modalType === "edit" && formData.color &&
+                            !getAvailableColors(selectedAdmin?._id).includes(formData.color) && (
+                            <option value={formData.color}>{formData.color} (Current)</option>
+                          )}
+
+                          {/* List available colors */}
+                          {getAvailableColors(selectedAdmin?._id).map((color, index) => (
+                            <option key={index} value={color}>
+                              {color}
+                            </option>
+                          ))}
+                        </select>
                         <div style={{
                           marginTop: "0.5rem",
                           display: "flex",
@@ -757,10 +825,10 @@ const UserManagement = () => {
                             width: "20px",
                             height: "20px",
                             backgroundColor: formData.color || "#4299e1",
-                            borderRadius: "50%",
+                            borderRadius: "4px",
                             border: "1px solid #ddd"
                           }} />
-                          <span>{formData.color || "#4299e1"}</span>
+                          <span>Color Preview</span>
                         </div>
                       </div>
                     )}

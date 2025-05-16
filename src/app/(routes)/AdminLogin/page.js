@@ -15,9 +15,7 @@ const AdminLogin = () => {
     const token = localStorage.getItem("adminToken");
     if (token) {
       const role = localStorage.getItem("adminRole");
-      if (role === "SuperAdmin") {
-        router.push("/superadmin");
-      } else if (role === "Admin") {
+      if (role === "SuperAdmin" || role === "Admin") {
         router.push("/superadmin");
       } else {
         router.push("/dashboard");
@@ -48,9 +46,7 @@ const AdminLogin = () => {
         localStorage.setItem("isAdminLoggedIn", "true");
 
         // Redirect based on role
-        if (data.role === "SuperAdmin") {
-          router.push("/superadmin");
-        } else if (data.role === "Admin") {
+        if (data.role === "SuperAdmin" || data.role === "Admin") {
           router.push("/superadmin");
         } else if (targetPage.startsWith("http")) {
           window.location.href = targetPage;

@@ -54,6 +54,14 @@ const fetchWithAuth = async (url, options = {}) => {
 // SuperAdmin Layout Component
 const SuperAdminLayout = ({ children, activePage }) => {
   const router = useRouter();
+  const [role, setRole] = useState(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem("adminRole");
+    setRole(storedRole);
+    setChecked(true);
+  }, []);
 
   const handleLogout = () => {
     // Clear all auth data
@@ -64,6 +72,57 @@ const SuperAdminLayout = ({ children, activePage }) => {
     localStorage.removeItem("isAdminLoggedIn");
     router.push("/AdminLogin");
   };
+
+  if (!checked) {
+    // Wait for role to be loaded from localStorage
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loader}></div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (role !== "SuperAdmin") {
+    // Show restricted message for non-SuperAdmin users
+    return (
+      <div className={styles.adminPanelContainer}>
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <h2 className={styles.sidebarTitle}>Super Admin</h2>
+          </div>
+          <nav>
+            <ul className={styles.sidebarNav}>
+              <li>
+                <Link
+                  href="/dashboard"
+                  className={styles.sidebarLink}
+                >
+                  <FaClipboardList className={styles.sidebarIcon} />
+                  Go to Dashboard
+                </Link>
+              </li>
+              <li>
+                <a href="#"
+                  onClick={handleLogout}
+                  className={styles.sidebarLink}
+                >
+                  <FaSignOutAlt className={styles.sidebarIcon} />
+                  Logout
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </aside>
+        <main className={styles.mainContent}>
+          <div className={styles.errorMessage} style={{ marginTop: "2rem", fontSize: "1.2rem" }}>
+            <FaUserShield style={{ marginRight: "0.5rem", fontSize: "1.5rem" }} />
+            Access Restricted: Only Super Admins can view this page.
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.adminPanelContainer}>
@@ -170,80 +229,88 @@ const formatDateTime = (dateString) => {
 
 // Audit Logs Page
 const AuditLogsPage = () => {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [loginHistory, setLoginHistory] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [admins, setAdmins] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("audit");
+  const [activeTab, setActiveTab] = useState("audit"); // "audit" or "login"
   const [filters, setFilters] = useState({
-    adminId: "",
-    action: "",
     startDate: "",
     endDate: "",
+    adminId: "",
+    action: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [userRole, setUserRole] = useState(null); // To track current user role
   const logsPerPage = 10;
+  const router = useRouter();
 
   // Authentication check
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
+    setUserRole(role);
 
     if (!token) {
       router.push("/AdminLogin");
       return;
     }
 
-    if (role !== "SuperAdmin") {
+    if (role !== "SuperAdmin" && role !== "Admin") {
       router.push("/dashboard");
       return;
     }
 
-    // Fetch audit logs and admins
-    fetchData();
-  }, [router, currentPage]);
+    // Fetch initial data
+    if (activeTab === "audit") {
+      fetchAuditLogs(1, filters);
+    } else {
+      fetchLoginHistory(1, filters);
+    }
+    // eslint-disable-next-line
+  }, [router]);
 
-  const fetchData = async () => {
+  // Fetch data when page or tab changes
+  useEffect(() => {
+    if (userRole !== "SuperAdmin" && userRole !== "Admin") return;
+    if (activeTab === "audit") {
+      fetchAuditLogs(currentPage, filters);
+    } else {
+      fetchLoginHistory(currentPage, filters);
+    }
+    // eslint-disable-next-line
+  }, [currentPage, activeTab]);
+
+  // Fetch admins for filter dropdown
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const adminsResponse = await fetchWithAuth(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/admins`
+        );
+        if (adminsResponse.ok) {
+          const adminsData = await adminsResponse.json();
+          setAdmins(adminsData);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    fetchAdmins();
+  }, []);
+
+  const fetchAuditLogs = async (page = 1, filterObj = filters) => {
     setLoading(true);
     setError(null);
-
-    try {
-      // Fetch admins for filter dropdown
-      const adminsResponse = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/admins`
-      );
-
-      if (adminsResponse.ok) {
-        const adminsData = await adminsResponse.json();
-        setAdmins(adminsData);
-      }
-
-      // Fetch audit logs
-      await fetchAuditLogs();
-
-      // Fetch login history
-      await fetchLoginHistory();
-
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAuditLogs = async () => {
     try {
       const queryParams = new URLSearchParams();
-      if (filters.adminId) queryParams.append('adminId', filters.adminId);
-      if (filters.action) queryParams.append('action', filters.action);
-      if (filters.startDate) queryParams.append('startDate', filters.startDate);
-      if (filters.endDate) queryParams.append('endDate', filters.endDate);
-      queryParams.append('page', currentPage);
+      if (filterObj.adminId) queryParams.append('adminId', filterObj.adminId);
+      if (filterObj.action) queryParams.append('action', filterObj.action);
+      if (filterObj.startDate) queryParams.append('startDate', filterObj.startDate);
+      if (filterObj.endDate) queryParams.append('endDate', filterObj.endDate);
+      queryParams.append('page', page);
       queryParams.append('limit', logsPerPage);
 
       const response = await fetchWithAuth(
@@ -255,22 +322,28 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      setAuditLogs(data.logs || []);
+      setLogs(data.logs || []);
       setTotalItems(data.totalItems || 0);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
-      console.error("Error fetching audit logs:", err);
       setError(err.message);
+      setLogs([]);
+      setTotalItems(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchLoginHistory = async () => {
+  const fetchLoginHistory = async (page = 1, filterObj = filters) => {
+    setLoading(true);
+    setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filters.adminId) queryParams.append('adminId', filters.adminId);
-      if (filters.startDate) queryParams.append('startDate', filters.startDate);
-      if (filters.endDate) queryParams.append('endDate', filters.endDate);
-      queryParams.append('page', currentPage);
+      if (filterObj.adminId) queryParams.append('adminId', filterObj.adminId);
+      if (filterObj.startDate) queryParams.append('startDate', filterObj.startDate);
+      if (filterObj.endDate) queryParams.append('endDate', filterObj.endDate);
+      queryParams.append('page', page);
       queryParams.append('limit', logsPerPage);
 
       const response = await fetchWithAuth(
@@ -282,12 +355,16 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      setLoginHistory(data.logs || []);
+      setLogs(data.logs || []);
       setTotalItems(data.totalItems || 0);
       setTotalPages(data.totalPages || 1);
     } catch (err) {
-      console.error("Error fetching login history:", err);
       setError(err.message);
+      setLogs([]);
+      setTotalItems(0);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -305,12 +382,11 @@ const AuditLogsPage = () => {
 
     try {
       if (activeTab === "audit") {
-        await fetchAuditLogs();
+        await fetchAuditLogs(1, filters);
       } else {
-        await fetchLoginHistory();
+        await fetchLoginHistory(1, filters);
       }
     } catch (err) {
-      console.error("Error applying filters:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -318,25 +394,24 @@ const AuditLogsPage = () => {
   };
 
   const resetFilters = async () => {
-    setFilters({
+    const reset = {
       adminId: "",
       action: "",
       startDate: "",
       endDate: "",
-    });
+    };
+    setFilters(reset);
     setCurrentPage(1);
 
-    // Fetch data with reset filters
     setLoading(true);
 
     try {
       if (activeTab === "audit") {
-        await fetchAuditLogs();
+        await fetchAuditLogs(1, reset);
       } else {
-        await fetchLoginHistory();
+        await fetchLoginHistory(1, reset);
       }
     } catch (err) {
-      console.error("Error resetting filters:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -349,12 +424,11 @@ const AuditLogsPage = () => {
     setLoading(true);
     try {
       if (tab === "audit") {
-        await fetchAuditLogs();
+        await fetchAuditLogs(1, filters);
       } else {
-        await fetchLoginHistory();
+        await fetchLoginHistory(1, filters);
       }
     } catch (err) {
-      console.error(`Error changing to ${tab} tab:`, err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -379,6 +453,29 @@ const AuditLogsPage = () => {
         <div className={styles.loadingContainer}>
           <div className={styles.loader}></div>
           <p>Loading audit logs...</p>
+        </div>
+      </SuperAdminLayout>
+    );
+  }
+
+  // If Admin role, show restricted message
+  if (userRole === "Admin") {
+    return (
+      <SuperAdminLayout activePage="audit-logs">
+        <div style={{
+          padding: "2rem",
+          textAlign: "center",
+          backgroundColor: "#fff5f5",
+          borderRadius: "8px",
+          border: "1px solid #fc8181",
+          margin: "2rem auto",
+          maxWidth: "800px"
+        }}>
+          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+          <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+            You do not have access to the Audit Logs section. Please contact a SuperAdmin for assistance.
+          </p>
+          <p>Your current role permissions do not allow access to this functionality.</p>
         </div>
       </SuperAdminLayout>
     );
@@ -514,8 +611,8 @@ const AuditLogsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {auditLogs.length > 0 ? (
-                        auditLogs.map((log) => (
+                      {logs.length > 0 ? (
+                        logs.map((log) => (
                           <tr key={log._id}>
                             <td data-label="Admin">
                               {log.adminId?.username || "Unknown"}
@@ -615,8 +712,8 @@ const AuditLogsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {loginHistory.length > 0 ? (
-                        loginHistory.map((log) => (
+                      {logs.length > 0 ? (
+                        logs.map((log) => (
                           <tr key={log._id}>
                             <td data-label="Admin">
                               {log.adminId?.username || "Unknown"}

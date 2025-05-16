@@ -52,6 +52,18 @@ const fetchWithAuth = async (url, options = {}) => {
 // SuperAdmin Layout Component
 const SuperAdminLayout = ({ children, activePage }) => {
   const router = useRouter();
+  const [roleChecked, setRoleChecked] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    const role = localStorage.getItem("adminRole");
+    if (role === "SuperAdmin") {
+      setIsSuperAdmin(true);
+    } else {
+      setIsSuperAdmin(false);
+    }
+    setRoleChecked(true);
+  }, []);
 
   const handleLogout = () => {
     // Clear all auth data
@@ -62,6 +74,16 @@ const SuperAdminLayout = ({ children, activePage }) => {
     localStorage.removeItem("isAdminLoggedIn");
     router.push("/AdminLogin");
   };
+
+  if (!roleChecked) {
+    // Prevent flicker
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loader}></div>
+        <p>Checking permissions...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.adminPanelContainer}>
@@ -336,24 +358,27 @@ const RolePermissionsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [activeRoleData, setActiveRoleData] = useState(null);
   const [originalRoleData, setOriginalRoleData] = useState(null);
+  const [userRole, setUserRole] = useState(null); // Track user role
 
   // Authentication check
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
+    setUserRole(role);
 
     if (!token) {
       router.push("/AdminLogin");
       return;
     }
 
-    if (role !== "SuperAdmin") {
+    if (role !== "SuperAdmin" && role !== "Admin") {
       router.push("/dashboard");
       return;
     }
 
     // Fetch role permissions
     fetchPermissions();
+    // eslint-disable-next-line
   }, [router]);
 
   const fetchPermissions = async () => {
@@ -467,6 +492,29 @@ const RolePermissionsPage = () => {
         <div className={styles.loadingContainer}>
           <div className={styles.loader}></div>
           <p>Loading role permissions...</p>
+        </div>
+      </SuperAdminLayout>
+    );
+  }
+
+  // If Admin role, show restricted message
+  if (userRole === "Admin") {
+    return (
+      <SuperAdminLayout activePage="roles">
+        <div style={{
+          padding: "2rem",
+          textAlign: "center",
+          backgroundColor: "#fff5f5",
+          borderRadius: "8px",
+          border: "1px solid #fc8181",
+          margin: "2rem auto",
+          maxWidth: "800px"
+        }}>
+          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+          <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+            You do not have access to the Role Permissions section. Please contact a SuperAdmin for assistance.
+          </p>
+          <p>Your current role permissions do not allow access to this functionality.</p>
         </div>
       </SuperAdminLayout>
     );

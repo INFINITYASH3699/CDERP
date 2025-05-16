@@ -16,6 +16,42 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 
+// Helper function to check if Admin has access to a section
+const checkAdminAccess = (section) => {
+  // Get user role from local storage
+  const role = typeof localStorage !== 'undefined' ? localStorage.getItem("adminRole") : null;
+
+  // Admin can access: Dashboard, Lead Management, Analytics, Go to Dashboard
+  if (role === "Admin") {
+    const allowedSections = ["dashboard", "leads", "analytics"];
+    return allowedSections.includes(section);
+  }
+
+  // SuperAdmin can access all sections
+  return true;
+};
+
+// Restricted section component
+const RestrictedSection = () => {
+  return (
+    <div style={{
+      padding: "2rem",
+      textAlign: "center",
+      backgroundColor: "#fff5f5",
+      borderRadius: "8px",
+      border: "1px solid #fc8181",
+      margin: "2rem auto",
+      maxWidth: "800px"
+    }}>
+      <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+      <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+        You do not have access to this section. Please contact a SuperAdmin for assistance.
+      </p>
+      <p>Your current role permissions do not allow access to this functionality.</p>
+    </div>
+  );
+};
+
 // Authenticated fetch utility
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem("adminToken");
@@ -47,9 +83,21 @@ const fetchWithAuth = async (url, options = {}) => {
   return response;
 };
 
-// SuperAdmin Main Layout Component
+// SuperAdmin Layout Component
 const SuperAdminLayout = ({ children, activePage }) => {
   const router = useRouter();
+  const [hasAccess, setHasAccess] = useState(true);
+
+  useEffect(() => {
+    // Check if current user (when Admin) is allowed to access the current section
+    const userRole = localStorage.getItem("adminRole");
+
+    if (userRole === "Admin") {
+      setHasAccess(checkAdminAccess(activePage));
+    } else {
+      setHasAccess(true);
+    }
+  }, [activePage]);
 
   const handleLogout = () => {
     // Clear all auth data
@@ -145,7 +193,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
         </nav>
       </aside>
       <main className={styles.mainContent}>
-        {children}
+        {!hasAccess ? <RestrictedSection /> : children}
       </main>
     </div>
   );
@@ -158,11 +206,13 @@ const SuperAdminDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [error, setError] = useState(null);
+  const [userRole, setUserRole] = useState(null);
 
   // Authentication check
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
+    setUserRole(role);
 
     if (!token) {
       router.push("/AdminLogin");
