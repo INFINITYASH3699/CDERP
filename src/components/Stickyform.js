@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import axios from "axios"; // Ensure axios is imported
+import axios from "axios";
 import styles from "@/styles/Stickyform.module.css";
 import { usePathname } from "next/navigation";
 
@@ -29,7 +29,7 @@ const countryCodes = [
   { code: "+52", country: "Mexico", minLength: 10, maxLength: 10 },
 ];
 
-const SContactForm = () => {
+function Stickyform() {
   const [formData, setFormData] = useState({
     name: "",
     contact: "",
@@ -46,6 +46,18 @@ const SContactForm = () => {
 
   const pathname = usePathname();
 
+  // Check if current path is an admin path
+  const isAdminPath = pathname && (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/superadmin') ||
+    pathname.startsWith('/AdminLogin')
+  );
+
+  // If on admin page, don't render the component
+  if (isAdminPath) {
+    return null;
+  }
+
   // List of paths where the form should be hidden
   const hiddenPaths = ['/dashboard', '/superadmin'];
 
@@ -60,7 +72,7 @@ const SContactForm = () => {
   useEffect(() => {
     // Check if current path is in the hiddenPaths list
     const shouldHideBasedOnPath = hiddenPaths.some(path => pathname?.startsWith(path));
-    
+
     const handleResize = () => {
       const isMobile = window.innerWidth <= 768;
       setIsMobileView(isMobile);
@@ -443,6 +455,6 @@ const SContactForm = () => {
       )}
     </>
   );
-};
+}
 
-export default SContactForm;
+export default Stickyform;

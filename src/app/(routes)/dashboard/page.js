@@ -10,6 +10,10 @@ import {
   FaCheckSquare,
   FaSquare,
   FaUserCog,
+  FaSync,
+  FaEdit,
+  FaSave,
+  FaTimes,
 } from "react-icons/fa";
 
 // Utility function for authenticated API requests
@@ -53,6 +57,13 @@ const Dashboard = () => {
   const [selectAll, setSelectAll] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const [editingLead, setEditingLead] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    contactedScore: "",
+    contactedComment: "",
+    status: "",
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
   const router = useRouter();
   const leadsPerPage = 30;
 
@@ -140,6 +151,71 @@ const Dashboard = () => {
       setLeads([]); // Ensure leads is an empty array on error
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Start editing a lead
+  const startEditLead = (lead) => {
+    setEditingLead(lead._id);
+    setEditFormData({
+      contactedScore: lead.contactedScore || "",
+      contactedComment: lead.contactedComment || "",
+      status: lead.status || "New",
+    });
+  };
+
+  // Cancel editing
+  const cancelEdit = () => {
+    setEditingLead(null);
+    setEditFormData({
+      contactedScore: "",
+      contactedComment: "",
+      status: "",
+    });
+  };
+
+  // Handle form data change
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({
+      ...editFormData,
+      [name]: value,
+    });
+  };
+
+  // Save lead updates
+  const saveLead = async (leadId) => {
+    try {
+      setUpdateLoading(true);
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/${leadId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(editFormData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update lead");
+      }
+
+      // Update the lead in the local state
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === leadId ? { ...lead, ...editFormData } : lead
+        )
+      );
+
+      // Cancel edit mode
+      cancelEdit();
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      alert(`Error updating lead: ${error.message}`);
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
@@ -306,39 +382,89 @@ const Dashboard = () => {
     }
   };
 
-  // Updated format for CSV export to include time
+  // Updated format for CSV export with better formatting and all fields
   const downloadCSV = () => {
     if (leads.length === 0) {
       alert("No data available for download");
       return;
     }
 
+    // Define headers with all available fields
     const headers = [
+      "Sr. No.",
       "Name",
       "Mobile Number",
       "Course Name",
       "Email ID",
       "Location",
       "Date & Time",
+      "Status",
+      "Contacted Score",
+      "Comments",
+      "Last Updated"
     ];
-    const csvRows = leads.map((lead) => [
-      lead.name,
-      lead.contact,
-      lead.coursename,
-      lead.email,
-      lead.location,
-      new Date(lead.createdAt).toLocaleString("en-US", { timeZone: "UTC" }),
-    ]);
 
+    // Map leads data including all fields
+    const csvRows = leads.map((lead, index) => {
+      // Format dates nicely for better readability
+      const createdDate = new Date(lead.createdAt).toLocaleString("en-US", {
+        timeZone: "UTC",
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const updatedDate = lead.updatedAt ? new Date(lead.updatedAt).toLocaleString("en-US", {
+        timeZone: "UTC",
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : "";
+
+      // Quote strings to handle commas in fields properly
+      const quoteValue = (value) => {
+        if (value === null || value === undefined) return '""';
+        return `"${String(value).replace(/"/g, '""')}"`;
+      };
+
+      // Prepare row with all fields
+      return [
+        index + 1, // Sr. No.
+        quoteValue(lead.name),
+        quoteValue(lead.contact),
+        quoteValue(lead.coursename),
+        quoteValue(lead.email),
+        quoteValue(lead.location),
+        quoteValue(createdDate),
+        quoteValue(lead.status || "New"),
+        quoteValue(lead.contactedScore || ""),
+        quoteValue(lead.contactedComment || ""),
+        quoteValue(updatedDate)
+      ];
+    });
+
+    // Create CSV content with headers and rows
     const csvContent = [
-      headers.join(","),
-      ...csvRows.map((row) => row.join(",")),
+      headers.map(header => `"${header}"`).join(","),
+      ...csvRows.map((row) => row.join(","))
     ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+
+    // Generate filename with date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
     a.href = url;
-    a.download = "leads.csv";
+    a.download = `leads_export_${dateStr}.csv`;
+    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -356,12 +482,12 @@ const Dashboard = () => {
   };
 
   const goToSuperAdmin = () => {
-    const role = localStorage.getItem("adminRole");
-    if (role === "SuperAdmin" || role === "Admin") {
-      router.push("/superadmin");
-    } else {
-      alert("You don't have permission to access the Admin Panel");
-    }
+    router.push("/superadmin");
+  };
+
+  // Refresh leads data
+  const handleRefresh = () => {
+    fetchLeads();
   };
 
   // If not authenticated, show loading screen
@@ -379,6 +505,9 @@ const Dashboard = () => {
       <div className={styles.dashboardHeader}>
         <h2 className={styles.dashboardTitle}>Contact Leads Dashboard</h2>
         <div className={styles.headerButtons}>
+          <button onClick={handleRefresh} className={styles.actionButton}>
+            <FaSync /> Refresh
+          </button>
           {/* Only SuperAdmin and Admin users can access the SuperAdmin panel */}
           {(userRole === "SuperAdmin" || userRole === "Admin") && (
             <button onClick={goToSuperAdmin} className={styles.actionButton}>
@@ -451,6 +580,8 @@ const Dashboard = () => {
                     <th>Email ID</th>
                     <th>Date & Time</th>
                     <th>Location</th>
+                    <th>Contacted</th>
+                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -489,23 +620,130 @@ const Dashboard = () => {
                           )}
                         </td>
                         <td data-label="Location">{lead.location}</td>
-                        <td data-label="Actions">
-                          {/* Only show delete button for SuperAdmin, Admin, and EditMode users */}
-                          {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
-                            <button
-                              onClick={() => deleteLead(lead._id)}
-                              className={styles.deleteButton}
-                              disabled={deleteLoading}
-                            >
-                              <FaTrash />
-                            </button>
+                        <td data-label="Contacted">
+                          {editingLead === lead._id ? (
+                            <div className={styles.editForm}>
+                              <select
+                                name="contactedScore"
+                                value={editFormData.contactedScore}
+                                onChange={handleEditFormChange}
+                                className={styles.editSelect}
+                              >
+                                <option value="">Select Score</option>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                                  <option key={score} value={score}>
+                                    {score}
+                                  </option>
+                                ))}
+                              </select>
+                              <textarea
+                                name="contactedComment"
+                                value={editFormData.contactedComment}
+                                onChange={handleEditFormChange}
+                                placeholder="Add comment..."
+                                className={styles.editTextarea}
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              {lead.contactedScore ? (
+                                <span className={styles.contactedScore}>
+                                  Score: {lead.contactedScore}
+                                  {lead.contactedComment && (
+                                    <span className={styles.contactedComment}>
+                                      <br />Comment: {lead.contactedComment}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                "Not set"
+                              )}
+                            </div>
                           )}
+                        </td>
+                        <td data-label="Status">
+                          {editingLead === lead._id ? (
+                            <select
+                              name="status"
+                              value={editFormData.status}
+                              onChange={handleEditFormChange}
+                              className={styles.editSelect}
+                            >
+                              <option value="New">New</option>
+                              <option value="Contacted">Contacted</option>
+                              <option value="Not Interested">Not Interested</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Enrolled">Enrolled</option>
+                              <option value="Converted">Converted</option>
+                              <option value="Rejected">Rejected</option>
+                            </select>
+                          ) : (
+                            <span
+                              className={`${styles.statusBadge} ${
+                                lead.status === "Converted" ? styles.convertedStatus :
+                                lead.status === "Contacted" ? styles.contactedStatus :
+                                lead.status === "Rejected" ? styles.rejectedStatus :
+                                lead.status === "Not Interested" ? styles.notInterestedStatus :
+                                lead.status === "In Progress" ? styles.inProgressStatus :
+                                lead.status === "Enrolled" ? styles.enrolledStatus :
+                                styles.newStatus
+                              }`}
+                            >
+                              {lead.status || "New"}
+                            </span>
+                          )}
+                        </td>
+                        <td data-label="Actions">
+                          <div className={styles.actionButtons}>
+                            {editingLead === lead._id ? (
+                              <>
+                                <button
+                                  onClick={() => saveLead(lead._id)}
+                                  className={styles.saveButton}
+                                  disabled={updateLoading}
+                                >
+                                  {updateLoading ? (
+                                    <FaSpinner className={styles.spinner} />
+                                  ) : (
+                                    <FaSave />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={cancelEdit}
+                                  className={styles.cancelButton}
+                                  disabled={updateLoading}
+                                >
+                                  <FaTimes />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                                  <button
+                                    onClick={() => startEditLead(lead)}
+                                    className={styles.editButton}
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                )}
+                                {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                                  <button
+                                    onClick={() => deleteLead(lead._id)}
+                                    className={styles.deleteButton}
+                                    disabled={deleteLoading}
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" className={styles.errorMessage}>
+                      <td colSpan="11" className={styles.errorMessage}>
                         No leads found
                       </td>
                     </tr>

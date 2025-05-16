@@ -226,7 +226,7 @@ const LeadManagementPage = () => {
       return;
     }
 
-    if (role !== "SuperAdmin" && role !== "Admin") {
+    if (role !== "SuperAdmin") {
       router.push("/dashboard");
       return;
     }
@@ -653,43 +653,91 @@ const LeadManagementPage = () => {
     }
   };
 
-  // Download CSV
+  // Download CSV with enhanced formatting
   const downloadCSV = () => {
     if (leads.length === 0) {
       alert("No data available for download");
       return;
     }
 
+    // Define headers with all available fields
     const headers = [
+      "Sr. No.",
       "Name",
       "Mobile Number",
       "Course Name",
       "Email ID",
       "Location",
       "Status",
+      "Contacted Score",
+      "Comments",
       "Assigned To",
-      "Date & Time",
+      "Creation Date & Time",
+      "Last Updated"
     ];
-    const csvRows = leads.map((lead) => [
-      lead.name,
-      lead.contact,
-      lead.coursename,
-      lead.email,
-      lead.location,
-      lead.status,
-      lead.assignedTo?.username || "Unassigned",
-      new Date(lead.createdAt).toLocaleString("en-US", { timeZone: "UTC" }),
-    ]);
 
+    // Map leads data including all fields
+    const csvRows = leads.map((lead, index) => {
+      // Format dates nicely for better readability
+      const createdDate = new Date(lead.createdAt).toLocaleString("en-US", {
+        timeZone: "UTC",
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const updatedDate = lead.updatedAt ? new Date(lead.updatedAt).toLocaleString("en-US", {
+        timeZone: "UTC",
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : "";
+
+      // Quote strings to handle commas in fields properly
+      const quoteValue = (value) => {
+        if (value === null || value === undefined) return '""';
+        return `"${String(value).replace(/"/g, '""')}"`;
+      };
+
+      // Prepare row with all fields
+      return [
+        index + 1, // Sr. No.
+        quoteValue(lead.name),
+        quoteValue(lead.contact),
+        quoteValue(lead.coursename),
+        quoteValue(lead.email),
+        quoteValue(lead.location),
+        quoteValue(lead.status || "New"),
+        quoteValue(lead.contactedScore || ""),
+        quoteValue(lead.contactedComment || ""),
+        quoteValue(lead.assignedTo?.username || "Unassigned"),
+        quoteValue(createdDate),
+        quoteValue(updatedDate)
+      ];
+    });
+
+    // Create CSV content with headers and rows
     const csvContent = [
-      headers.join(","),
-      ...csvRows.map((row) => row.join(",")),
+      headers.map(header => `"${header}"`).join(","),
+      ...csvRows.map((row) => row.join(","))
     ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+
+    // Generate filename with date
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
     a.href = url;
-    a.download = "leads.csv";
+    a.download = `leads_export_${dateStr}.csv`;
+    a.style.display = "none";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

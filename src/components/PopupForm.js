@@ -23,19 +23,29 @@ const PopupForm = ({ onSubmitData }) => {
 
   const pathname = usePathname();
 
-  // --- Effects remain the same ---
   useEffect(() => {
-    const hiddenPages = ["/adminlogin", "/dashboard", "/blogsadmin"];
+    // Update the hidden pages list to include all admin paths
+    const hiddenPages = [
+      "/adminlogin",
+      "/dashboard",
+      "/blogsadmin",
+      "/superadmin"
+    ];
+
     const currentPath = pathname?.toLowerCase() || "";
+
+    // Check if the current path starts with any of the hidden pages
     if (hiddenPages.some(page => currentPath.startsWith(page))) {
       setIsVisible(false);
       return;
     }
+
     const showTimer = setTimeout(() => {
       if (!document.body.classList.contains(styles.popupClosedManually)) {
           setIsVisible(true);
       }
     }, 5000);
+
     return () => clearTimeout(showTimer);
   }, [pathname]);
 

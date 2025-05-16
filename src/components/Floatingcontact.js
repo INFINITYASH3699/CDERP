@@ -1,12 +1,26 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPhone } from '@fortawesome/free-solid-svg-icons';
 import styles from "@/styles/Floatingcontact.module.css";
 
 const Floatingcontact = ({ phoneNumber }) => {
   const [isMobile, setIsMobile] = useState(false);
+  const pathname = usePathname();
+
+  // Check if current path is an admin path
+  const isAdminPath = pathname && (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/superadmin') ||
+    pathname.startsWith('/AdminLogin')
+  );
+
+  // If on admin page, don't render the component
+  if (isAdminPath) {
+    return null;
+  }
 
   useEffect(() => {
     const handleResize = () => {

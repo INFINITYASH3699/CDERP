@@ -185,7 +185,7 @@ const UserManagement = () => {
       return;
     }
 
-    if (role !== "SuperAdmin" && role !== "Admin") {
+    if (role !== "SuperAdmin") {
       router.push("/dashboard");
       return;
     }
