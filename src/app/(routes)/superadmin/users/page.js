@@ -446,6 +446,10 @@ const UserManagement = () => {
         color: formData.color,
       };
 
+      // Store the original color for comparison
+      const originalColor = selectedAdmin?.color;
+      const originalLocation = selectedAdmin?.location;
+
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admins/${selectedAdmin._id}`,
         {
@@ -462,8 +466,25 @@ const UserManagement = () => {
         throw new Error(data.message || "Failed to update admin");
       }
 
-      // Success
-      await fetchAdmins(); // Refresh the list
+      const data = await response.json();
+
+      // Update local admin data immediately
+      if (data && data.admin) {
+        setAdmins(prevAdmins => prevAdmins.map(admin =>
+          admin._id === selectedAdmin._id
+            ? { ...admin, ...updateData }
+            : admin
+        ));
+      } else {
+        // If we didn't get admin data in response, refresh the whole list
+        await fetchAdmins();
+      }
+
+      // If color was changed, notify the user
+      if (originalColor !== formData.color) {
+        alert(`Admin color updated to ${getColorName(formData.color)}. Please use the Refresh button on the Dashboard and Lead Management pages to see the updated colors for assigned leads.`);
+      }
+
       closeModal();
     } catch (err) {
       setError(err.message);
@@ -653,7 +674,14 @@ const UserManagement = () => {
                         display: "inline-block",
                         border: "1px solid #ddd"
                       }}></div>
-                      <span>{getColorName(admin.color || "#4299e1")} ({admin.color || "#4299e1"})</span>
+                      <span style={{
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        backgroundColor: `${admin.color || "#4299e1"}20`,
+                        border: `1px solid ${admin.color || "#4299e1"}40`
+                      }}>
+                        {getColorName(admin.color || "#4299e1")} ({admin.color || "#4299e1"})
+                      </span>
                     </div>
                   </td>
                   <td data-label="Status">
@@ -805,28 +833,45 @@ const UserManagement = () => {
                         <label className={styles.formLabel} htmlFor="color">
                           Color
                         </label>
-                        <select
-                          id="color"
-                          name="color"
-                          value={formData.color}
-                          onChange={handleInputChange}
-                          className={styles.formSelect}
-                        >
-                          {/* Include current color if editing even if used elsewhere */}
-                          {modalType === "edit" && formData.color &&
-                            !getAvailableColors(selectedAdmin?._id).map(c => c.code).includes(formData.color) && (
-                            <option value={formData.color}>
-                              {getColorName(formData.color)} ({formData.color}) - Current
-                            </option>
-                          )}
+                        <div className={styles.colorSelectContainer}>
+                          <select
+                            id="color"
+                            name="color"
+                            value={formData.color}
+                            onChange={handleInputChange}
+                            className={styles.formSelect}
+                            style={{ paddingLeft: '30px' }}
+                          >
+                            {/* Include current color if editing even if used elsewhere */}
+                            {modalType === "edit" && formData.color &&
+                              !getAvailableColors(selectedAdmin?._id).map(c => c.code).includes(formData.color) && (
+                              <option value={formData.color} style={{ backgroundColor: `${formData.color}20` }}>
+                                {getColorName(formData.color)} ({formData.color}) - Current
+                              </option>
+                            )}
 
-                          {/* List available colors */}
-                          {getAvailableColors(selectedAdmin?._id).map((color, index) => (
-                            <option key={index} value={color.code}>
-                              {color.name} ({color.code})
-                            </option>
-                          ))}
-                        </select>
+                            {/* List available colors */}
+                            {getAvailableColors(selectedAdmin?._id).map((color, index) => (
+                              <option key={index} value={color.code} style={{ backgroundColor: `${color.code}20` }}>
+                                {color.name} ({color.code})
+                              </option>
+                            ))}
+                          </select>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '10px',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              width: '16px',
+                              height: '16px',
+                              backgroundColor: formData.color || '#4299e1',
+                              borderRadius: '3px',
+                              border: '1px solid #ddd',
+                              pointerEvents: 'none'
+                            }}
+                          />
+                        </div>
                         <div style={{
                           marginTop: "0.5rem",
                           display: "flex",

@@ -21,6 +21,7 @@ import {
   FaCheckSquare,
   FaSquare,
   FaUserEdit,
+  FaSync,
 } from "react-icons/fa";
 import Link from "next/link";
 
@@ -783,6 +784,12 @@ const LeadManagementPage = () => {
           onClick={openCreateModal}
         >
           <FaUsers style={{ marginRight: "0.5rem" }} /> Add New Lead
+        </button>
+        <button
+          className={`${styles.button} ${styles.secondaryButton}`}
+          onClick={fetchLeads}
+        >
+          <FaSync style={{ marginRight: "0.5rem" }} /> Refresh Data
         </button>
         <button
           className={`${styles.button} ${styles.secondaryButton}`}
