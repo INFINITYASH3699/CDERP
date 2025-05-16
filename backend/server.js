@@ -458,11 +458,18 @@ app.put("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','Edi
 });
 
 // === Update Lead Route (PATCH version) (Admin Protected) ===
-app.patch("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','EditMode']), async (req, res) => {
+app.patch("/api/leads/:id", authMiddleware, requireRole(['SuperAdmin','Admin','EditMode','ViewMode']), async (req, res) => {
   try {
     const { id } = req.params;
     const updateFields = {};
-    const allowedFields = ['name','email','contact','countryCode','coursename','location','status','notes','assignedTo','contactedScore','contactedComment'];
+
+    // Define allowed fields based on user role
+    let allowedFields = ['contactedScore', 'contactedComment', 'status']; // Base fields that ViewMode can update
+
+    // Expand allowed fields for higher privilege roles
+    if (req.admin.role === 'SuperAdmin' || req.admin.role === 'Admin' || req.admin.role === 'EditMode') {
+      allowedFields = [...allowedFields, 'name', 'email', 'contact', 'countryCode', 'coursename', 'location', 'notes', 'assignedTo'];
+    }
 
     for (const key of allowedFields) {
       if (req.body[key] !== undefined) updateFields[key] = req.body[key];
@@ -792,13 +799,19 @@ app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req,
   }
 });
 
-// List Admins
-app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+// List Admins (SuperAdmin and Admin)
+app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
   try {
-    const admins = await Admin.find().select('-password').lean();
+    // For non-SuperAdmin users, return limited admin information
+    const query = req.admin.role === 'Admin' ?
+      { role: { $ne: 'SuperAdmin' } } : // Admin users can't view SuperAdmins
+      {};
+
+    const admins = await Admin.find(query).select('username email role active createdAt lastLogin').sort({ createdAt: -1 });
     res.status(200).json(admins);
-  } catch (e) {
-    res.status(500).json({ message: 'Error fetching admins.', error: e.message });
+  } catch (err) {
+    console.error('Error fetching admins:', err);
+    res.status(500).json({ message: 'Failed to fetch admin list.' });
   }
 });
 
@@ -884,17 +897,27 @@ app.put('/api/role-permissions/:role', authMiddleware, requireRole(['SuperAdmin'
   }
 });
 
-// === Audit Log (SuperAdmin only, with pagination and filters) ===
-app.get('/api/audit-logs', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
+// === Audit Log (SuperAdmin and Admin, with pagination and filters) ===
+app.get('/api/audit-logs', authMiddleware, requireRole(['SuperAdmin', 'Admin']), async (req, res) => {
   try {
-    const { adminId, action, startDate, endDate, page = 1, limit = 10 } = req.query;
+    // Destructure query parameters with defaults
+    const {
+      page = 1,
+      limit = 50,
+      startDate,
+      endDate,
+      action,
+      adminId
+    } = req.query;
 
-    // Build filter
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build filter object
     const filter = {};
-    if (adminId) filter.adminId = adminId;
-    if (action) filter.action = action;
 
-    // Date filtering
+    // Apply date range filter if provided
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
@@ -905,25 +928,35 @@ app.get('/api/audit-logs', authMiddleware, requireRole(['SuperAdmin']), async (r
       }
     }
 
-    // Count total documents for pagination
-    const totalItems = await AuditLog.countDocuments(filter);
-    const totalPages = Math.ceil(totalItems / parseInt(limit));
+    // Apply action filter if provided
+    if (action) filter.action = action;
 
-    // Get paginated logs
+    // Apply admin filter if provided
+    if (adminId) filter.adminId = mongoose.Types.ObjectId(adminId);
+
+    // Non-SuperAdmin users can only view logs that don't relate to SuperAdmin actions
+    if (req.admin.role === 'Admin') {
+      filter.$or = [
+        { 'metadata.role': { $ne: 'SuperAdmin' } },
+        { 'metadata.role': { $exists: false } }
+      ];
+    }
+
+    const totalItems = await AuditLog.countDocuments(filter);
     const logs = await AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit))
       .populate('adminId', 'username role')
-      .lean();
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
     res.status(200).json({
       logs,
-      totalItems,
-      totalPages,
-      currentPage: parseInt(page)
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalItems / limitNum),
+      totalItems
     });
   } catch (e) {
+    console.error('Error fetching audit logs:', e);
     res.status(500).json({ message: 'Error fetching audit logs.', error: e.message });
   }
 });

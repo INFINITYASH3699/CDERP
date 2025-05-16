@@ -120,8 +120,9 @@ const Dashboard = () => {
       setLoading(true);
       setError(null); // Clear previous errors before fetching
 
+      // Use the populated endpoint to get leads with assignedTo data
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/leads`
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads?populate=assignedTo`
       );
 
       if (!response.ok) {
@@ -139,7 +140,7 @@ const Dashboard = () => {
       const data = await response.json();
       // Ensure data is an array before setting state
       if (Array.isArray(data)) {
-        setLeads(data); // <-- CORRECT: Pass the fetched data array
+        setLeads(data);
       } else {
         console.error("API did not return an array:", data);
         setLeads([]); // Set to empty array if response is not as expected
@@ -156,6 +157,7 @@ const Dashboard = () => {
 
   // Start editing a lead
   const startEditLead = (lead) => {
+    // ViewMode users can edit Contacted and Status fields
     setEditingLead(lead._id);
     setEditFormData({
       contactedScore: lead.contactedScore || "",
@@ -344,6 +346,11 @@ const Dashboard = () => {
 
   // Handle selection of a single lead
   const handleSelectLead = (id) => {
+    // Check if user has appropriate permissions to select leads
+    if (userRole !== "SuperAdmin" && userRole !== "Admin" && userRole !== "EditMode") {
+      return; // Silently fail for ViewMode users
+    }
+
     setSelectedLeads((prev) => {
       if (prev.includes(id)) {
         return prev.filter((leadId) => leadId !== id);
@@ -355,6 +362,11 @@ const Dashboard = () => {
 
   // Handle select all leads on current page
   const handleSelectAll = () => {
+    // Check if user has appropriate permissions to select leads
+    if (userRole !== "SuperAdmin" && userRole !== "Admin" && userRole !== "EditMode") {
+      return; // Silently fail for ViewMode users
+    }
+
     if (selectAll) {
       setSelectedLeads((prev) =>
         prev.filter((id) => !currentLeads.some((lead) => lead._id === id))
@@ -397,6 +409,7 @@ const Dashboard = () => {
       "Course Name",
       "Email ID",
       "Location",
+      "Assigned To",
       "Date & Time",
       "Status",
       "Contacted Score",
@@ -439,6 +452,7 @@ const Dashboard = () => {
         quoteValue(lead.coursename),
         quoteValue(lead.email),
         quoteValue(lead.location),
+        quoteValue(lead.assignedTo ? lead.assignedTo.username : "Not Assigned"),
         quoteValue(createdDate),
         quoteValue(lead.status || "New"),
         quoteValue(lead.contactedScore || ""),
@@ -561,18 +575,20 @@ const Dashboard = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th className={styles.checkboxColumn}>
-                      <div
-                        className={styles.checkboxWrapper}
-                        onClick={handleSelectAll}
-                      >
-                        {selectAll ? (
-                          <FaCheckSquare className={styles.checkIcon} />
-                        ) : (
-                          <FaSquare className={styles.checkIcon} />
-                        )}
-                      </div>
-                    </th>
+                    {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                      <th className={styles.checkboxColumn}>
+                        <div
+                          className={styles.checkboxWrapper}
+                          onClick={handleSelectAll}
+                        >
+                          {selectAll ? (
+                            <FaCheckSquare className={styles.checkIcon} />
+                          ) : (
+                            <FaSquare className={styles.checkIcon} />
+                          )}
+                        </div>
+                      </th>
+                    )}
                     <th>Sr. No.</th>
                     <th>Name</th>
                     <th>Mobile Number</th>
@@ -580,6 +596,7 @@ const Dashboard = () => {
                     <th>Email ID</th>
                     <th>Date & Time</th>
                     <th>Location</th>
+                    <th>Assigned To</th>
                     <th>Contacted</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -589,21 +606,23 @@ const Dashboard = () => {
                   {currentLeads.length > 0 ? (
                     currentLeads.map((lead, index) => (
                       <tr key={lead._id || index}>
-                        <td
-                          data-label="Select"
-                          className={styles.checkboxColumn}
-                        >
-                          <div
-                            className={styles.checkboxWrapper}
-                            onClick={() => handleSelectLead(lead._id)}
+                        {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                          <td
+                            data-label="Select"
+                            className={styles.checkboxColumn}
                           >
-                            {selectedLeads.includes(lead._id) ? (
-                              <FaCheckSquare className={styles.checkIcon} />
-                            ) : (
-                              <FaSquare className={styles.checkIcon} />
-                            )}
-                          </div>
-                        </td>
+                            <div
+                              className={styles.checkboxWrapper}
+                              onClick={() => handleSelectLead(lead._id)}
+                            >
+                              {selectedLeads.includes(lead._id) ? (
+                                <FaCheckSquare className={styles.checkIcon} />
+                              ) : (
+                                <FaSquare className={styles.checkIcon} />
+                              )}
+                            </div>
+                          </td>
+                        )}
                         <td data-label="Sr. No.">
                           {indexOfFirstLead + index + 1}
                         </td>
@@ -620,6 +639,9 @@ const Dashboard = () => {
                           )}
                         </td>
                         <td data-label="Location">{lead.location}</td>
+                        <td data-label="Assigned To">
+                          {lead.assignedTo ? lead.assignedTo.username : "Not Assigned"}
+                        </td>
                         <td data-label="Contacted">
                           {editingLead === lead._id ? (
                             <div className={styles.editForm}>
@@ -630,11 +652,13 @@ const Dashboard = () => {
                                 className={styles.editSelect}
                               >
                                 <option value="">Select Score</option>
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                                  <option key={score} value={score}>
-                                    {score}
-                                  </option>
-                                ))}
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+                                  (score) => (
+                                    <option key={score} value={score}>
+                                      {score}
+                                    </option>
+                                  )
+                                )}
                               </select>
                               <textarea
                                 name="contactedComment"
@@ -680,13 +704,19 @@ const Dashboard = () => {
                           ) : (
                             <span
                               className={`${styles.statusBadge} ${
-                                lead.status === "Converted" ? styles.convertedStatus :
-                                lead.status === "Contacted" ? styles.contactedStatus :
-                                lead.status === "Rejected" ? styles.rejectedStatus :
-                                lead.status === "Not Interested" ? styles.notInterestedStatus :
-                                lead.status === "In Progress" ? styles.inProgressStatus :
-                                lead.status === "Enrolled" ? styles.enrolledStatus :
-                                styles.newStatus
+                                lead.status === "Converted"
+                                  ? styles.convertedStatus
+                                  : lead.status === "Contacted"
+                                  ? styles.contactedStatus
+                                  : lead.status === "Rejected"
+                                  ? styles.rejectedStatus
+                                  : lead.status === "Not Interested"
+                                  ? styles.notInterestedStatus
+                                  : lead.status === "In Progress"
+                                  ? styles.inProgressStatus
+                                  : lead.status === "Enrolled"
+                                  ? styles.enrolledStatus
+                                  : styles.newStatus
                               }`}
                             >
                               {lead.status || "New"}
@@ -718,15 +748,15 @@ const Dashboard = () => {
                               </>
                             ) : (
                               <>
-                                {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
-                                  <button
-                                    onClick={() => startEditLead(lead)}
-                                    className={styles.editButton}
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                )}
-                                {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                                <button
+                                  onClick={() => startEditLead(lead)}
+                                  className={styles.editButton}
+                                >
+                                  <FaEdit />
+                                </button>
+                                {(userRole === "SuperAdmin" ||
+                                  userRole === "Admin" ||
+                                  userRole === "EditMode") && (
                                   <button
                                     onClick={() => deleteLead(lead._id)}
                                     className={styles.deleteButton}
@@ -743,7 +773,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="11" className={styles.errorMessage}>
+                      <td colSpan={userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode" ? 12 : 11} className={styles.errorMessage}>
                         No leads found
                       </td>
                     </tr>

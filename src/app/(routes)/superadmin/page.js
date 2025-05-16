@@ -169,13 +169,14 @@ const SuperAdminDashboard = () => {
       return;
     }
 
-    if (role !== "SuperAdmin") {
+    if (role !== "SuperAdmin" && role !== "Admin") {
       router.push("/dashboard");
       return;
     }
 
     // Fetch dashboard data
     fetchDashboardData();
+    // eslint-disable-next-line
   }, [router]);
 
   const fetchDashboardData = async () => {
