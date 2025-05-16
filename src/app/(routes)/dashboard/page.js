@@ -605,7 +605,13 @@ const Dashboard = () => {
                 <tbody>
                   {currentLeads.length > 0 ? (
                     currentLeads.map((lead, index) => (
-                      <tr key={lead._id || index}>
+                      <tr
+                        key={lead._id || index}
+                        style={lead.assignedTo?.color ? {
+                          backgroundColor: `${lead.assignedTo.color}30`, // Add transparency (30% opacity)
+                          transition: 'background-color 0.3s ease'
+                        } : {}}
+                      >
                         {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
                           <td
                             data-label="Select"
@@ -695,9 +701,6 @@ const Dashboard = () => {
                             >
                               <option value="New">New</option>
                               <option value="Contacted">Contacted</option>
-                              <option value="Not Interested">Not Interested</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="Enrolled">Enrolled</option>
                               <option value="Converted">Converted</option>
                               <option value="Rejected">Rejected</option>
                             </select>
@@ -710,12 +713,6 @@ const Dashboard = () => {
                                   ? styles.contactedStatus
                                   : lead.status === "Rejected"
                                   ? styles.rejectedStatus
-                                  : lead.status === "Not Interested"
-                                  ? styles.notInterestedStatus
-                                  : lead.status === "In Progress"
-                                  ? styles.inProgressStatus
-                                  : lead.status === "Enrolled"
-                                  ? styles.enrolledStatus
                                   : styles.newStatus
                               }`}
                             >

@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema({
   countryCode: { type: String, trim: true }, // Removed required constraint
   coursename: { type: String, trim: true }, // Optional
   location: { type: String, trim: true }, // Optional
-  status: { type: String, enum: ['New', 'Contacted', 'Converted', 'Rejected', 'Not Interested', 'In Progress', 'Enrolled'], default: 'New' },
+  status: { type: String, enum: ['New', 'Contacted', 'Converted', 'Rejected'], default: 'New' },
   contactedScore: { type: Number, min: 1, max: 10 }, // Contacted score from 1-10
   contactedComment: { type: String, trim: true }, // Comment for the contacted score
   notes: { type: String, trim: true, default: '' },
@@ -81,6 +81,8 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, trim: true, lowercase: true },
   role: { type: String, enum: ['SuperAdmin','Admin','ViewMode','EditMode'], default: 'Admin' },
   active: { type: Boolean, default: true },
+  location: { type: String, enum: ['Pune', 'Mumbai', 'Raipur', 'Other'], default: 'Other' },
+  color: { type: String, default: '#4299e1' }, // Default color
   lastLogin: { type: Date },
   createdAt: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' }
@@ -779,7 +781,7 @@ app.post("/api/admin-login", async (req, res) => {
 // Create Admin
 app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
   try {
-    const { username, password, role, email } = req.body;
+    const { username, password, role, email, location, color } = req.body;
     if (!username || !password || !role) {
       return res.status(400).json({ message: 'Username, password, and role are required.' });
     }
@@ -791,7 +793,15 @@ app.post('/api/admins', authMiddleware, requireRole(['SuperAdmin']), async (req,
       return res.status(409).json({ message: 'Username already exists.' });
     }
     const hashed = await bcrypt.hash(password, 10);
-    const admin = await Admin.create({ username, password: hashed, role, email, createdBy: req.admin.id });
+    const admin = await Admin.create({
+      username,
+      password: hashed,
+      role,
+      email,
+      location: location || 'Other',
+      color: color || '#4299e1',
+      createdBy: req.admin.id
+    });
     await logAction(req.admin.id, 'create_admin', 'Admin', { adminId: admin._id, username, role });
     res.status(201).json({ message: 'Admin created.', admin: { id: admin._id, username: admin.username, role: admin.role, active: admin.active } });
   } catch (e) {
@@ -819,7 +829,7 @@ app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin', 'Admin']), asy
 app.put('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (req, res) => {
   try {
     const { id } = req.params;
-    const { role, active, password, email } = req.body;
+    const { role, active, password, email, location, color } = req.body;
     const updateFields = {};
     if (role) {
       if (!['SuperAdmin','Admin','ViewMode','EditMode'].includes(role)) {
@@ -830,10 +840,22 @@ app.put('/api/admins/:id', authMiddleware, requireRole(['SuperAdmin']), async (r
     if (typeof active === 'boolean') updateFields.active = active;
     if (password) updateFields.password = await bcrypt.hash(password, 10);
     if (email) updateFields.email = email;
+    if (location) updateFields.location = location;
+    if (color) updateFields.color = color;
     const admin = await Admin.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true });
     if (!admin) return res.status(404).json({ message: 'Admin not found.' });
     await logAction(req.admin.id, 'update_admin', 'Admin', { adminId: id, updateFields });
-    res.status(200).json({ message: 'Admin updated.', admin: { id: admin._id, username: admin.username, role: admin.role, active: admin.active } });
+    res.status(200).json({
+      message: 'Admin updated.',
+      admin: {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        active: admin.active,
+        location: admin.location,
+        color: admin.color
+      }
+    });
   } catch (e) {
     res.status(500).json({ message: 'Error updating admin.', error: e.message });
   }

@@ -981,7 +981,13 @@ const LeadManagementPage = () => {
             <tbody>
               {displayedLeads.length > 0 ? (
                 displayedLeads.map((lead) => (
-                  <tr key={lead._id}>
+                  <tr
+                    key={lead._id}
+                    style={lead.assignedTo?.color ? {
+                      backgroundColor: `${lead.assignedTo.color}30`, // Add transparency (30% opacity)
+                      transition: 'background-color 0.3s ease'
+                    } : {}}
+                  >
                     <td
                       data-label="Select"
                       className={styles.checkboxColumn}

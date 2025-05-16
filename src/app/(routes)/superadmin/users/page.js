@@ -170,6 +170,8 @@ const UserManagement = () => {
     password: "",
     confirmPassword: "",
     role: "Admin",
+    location: "Other",
+    color: "#4299e1",
   });
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -271,6 +273,8 @@ const UserManagement = () => {
       password: "",
       confirmPassword: "",
       role: "Admin",
+      location: "Other",
+      color: "#4299e1",
     });
     setFormErrors({});
     setModalType("create");
@@ -284,6 +288,8 @@ const UserManagement = () => {
       email: admin.email || "",
       role: admin.role,
       active: admin.active,
+      location: admin.location || "Other",
+      color: admin.color || "#4299e1",
       password: "",
       confirmPassword: "",
     });
@@ -360,6 +366,8 @@ const UserManagement = () => {
             email: formData.email,
             password: formData.password,
             role: formData.role,
+            location: formData.location,
+            color: formData.color,
           }),
         }
       );
@@ -384,6 +392,8 @@ const UserManagement = () => {
         role: formData.role,
         active: formData.active,
         email: formData.email,
+        location: formData.location,
+        color: formData.color,
       };
 
       const response = await fetchWithAuth(
@@ -537,6 +547,8 @@ const UserManagement = () => {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Role</th>
+                <th>Location</th>
+                <th>Color</th>
                 <th>Status</th>
                 <th>Created At</th>
                 <th>Actions</th>
@@ -556,6 +568,20 @@ const UserManagement = () => {
                     }`}>
                       {admin.role}
                     </span>
+                  </td>
+                  <td data-label="Location">{admin.location || "Other"}</td>
+                  <td data-label="Color">
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <div style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "4px",
+                        backgroundColor: admin.color || "#4299e1",
+                        display: "inline-block",
+                        border: "1px solid #ddd"
+                      }}></div>
+                      <span>{admin.color || "#4299e1"}</span>
+                    </div>
                   </td>
                   <td data-label="Status">
                     <span className={admin.active ? styles.badgeGreen : styles.badgeRed}>
@@ -606,7 +632,7 @@ const UserManagement = () => {
               ))}
               {admins.length === 0 && (
                 <tr>
-                  <td colSpan="6" className={styles.errorMessage}>
+                  <td colSpan="8" className={styles.errorMessage}>
                     No admin users found
                   </td>
                 </tr>
@@ -678,6 +704,66 @@ const UserManagement = () => {
                         <p className={styles.errorMessage}>{formErrors.email}</p>
                       )}
                     </div>
+
+                    {/* Location field */}
+                    {(modalType === "create" || modalType === "edit") && (
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel} htmlFor="location">
+                          Location
+                        </label>
+                        <select
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          className={styles.formSelect}
+                        >
+                          <option value="Pune">Pune</option>
+                          <option value="Mumbai">Mumbai</option>
+                          <option value="Raipur">Raipur</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Color field */}
+                    {(modalType === "create" || modalType === "edit") && (
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel} htmlFor="color">
+                          Color
+                        </label>
+                        <input
+                          type="color"
+                          id="color"
+                          name="color"
+                          value={formData.color || "#4299e1"}
+                          onChange={handleInputChange}
+                          className={styles.formInput}
+                          style={{
+                            width: "100%",
+                            height: "2.5rem",
+                            padding: "0.25rem",
+                            cursor: "pointer",
+                            border: "1px solid #ddd"
+                          }}
+                        />
+                        <div style={{
+                          marginTop: "0.5rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem"
+                        }}>
+                          <div style={{
+                            width: "20px",
+                            height: "20px",
+                            backgroundColor: formData.color || "#4299e1",
+                            borderRadius: "50%",
+                            border: "1px solid #ddd"
+                          }} />
+                          <span>{formData.color || "#4299e1"}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Password fields - only for create and reset */}
                     {(modalType === "create" || modalType === "reset") && (
