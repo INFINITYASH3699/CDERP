@@ -46,6 +46,9 @@ const SContactForm = () => {
 
   const pathname = usePathname();
 
+  // List of paths where the form should be hidden
+  const hiddenPaths = ['/dashboard', '/superadmin'];
+
   useEffect(() => {
     // When component mounts, find the footer element in the DOM
     const footerElement = document.querySelector("footer");
@@ -55,12 +58,15 @@ const SContactForm = () => {
   }, []);
 
   useEffect(() => {
+    // Check if current path is in the hiddenPaths list
+    const shouldHideBasedOnPath = hiddenPaths.some(path => pathname?.startsWith(path));
+    
     const handleResize = () => {
       const isMobile = window.innerWidth <= 768;
       setIsMobileView(isMobile);
 
       // On resize, check footer visibility to set form state
-      if (!isMobile) {
+      if (!isMobile && !shouldHideBasedOnPath) {
         checkFooterVisibility();
       } else {
         setIsFormVisible(false);
@@ -79,12 +85,12 @@ const SContactForm = () => {
         setIsFormVisible(false);
       } else {
         // Footer is not in viewport at all
-        setIsFormVisible(true);
+        setIsFormVisible(!shouldHideBasedOnPath);
       }
     };
 
     const handleScroll = () => {
-      if (!isMobileView) {
+      if (!isMobileView && !shouldHideBasedOnPath) {
         checkFooterVisibility();
 
         // Extra check for when scrolled to bottom of page
@@ -98,8 +104,12 @@ const SContactForm = () => {
       }
     };
 
-    // Initialize
-    handleResize();
+    // Initialize - hide form if on restricted paths
+    if (shouldHideBasedOnPath) {
+      setIsFormVisible(false);
+    } else {
+      handleResize();
+    }
 
     // Add event listeners
     window.addEventListener("resize", handleResize);
@@ -109,7 +119,7 @@ const SContactForm = () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleScroll);
     };
-  }, [isMobileView, pathname]);
+  }, [isMobileView, pathname, hiddenPaths]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

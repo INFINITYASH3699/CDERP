@@ -145,6 +145,12 @@ const Dashboard = () => {
 
   // Delete a single lead
   const deleteLead = async (id) => {
+    // Check if user has permission to delete leads (SuperAdmin, Admin, or EditMode)
+    if (userRole !== "SuperAdmin" && userRole !== "Admin" && userRole !== "EditMode") {
+      alert("You don't have permission to delete leads.");
+      return;
+    }
+
     if (!window.confirm("Are you sure you want to delete this lead?")) return;
 
     try {
@@ -174,6 +180,12 @@ const Dashboard = () => {
 
   // Delete multiple selected leads
   const deleteSelectedLeads = async () => {
+    // Check if user has permission to delete leads (SuperAdmin, Admin, or EditMode)
+    if (userRole !== "SuperAdmin" && userRole !== "Admin" && userRole !== "EditMode") {
+      alert("You don't have permission to delete leads.");
+      return;
+    }
+
     if (selectedLeads.length === 0) {
       alert("Please select at least one lead to delete");
       return;
@@ -362,7 +374,8 @@ const Dashboard = () => {
       <div className={styles.dashboardHeader}>
         <h2 className={styles.dashboardTitle}>Contact Leads Dashboard</h2>
         <div className={styles.headerButtons}>
-          {userRole === "SuperAdmin" && (
+          {/* Only SuperAdmin and Admin users can access the SuperAdmin panel */}
+          {(userRole === "SuperAdmin" || userRole === "Admin") && (
             <button onClick={goToSuperAdmin} className={styles.actionButton}>
               <FaUserCog /> Admin Panel
             </button>
@@ -382,18 +395,21 @@ const Dashboard = () => {
             {selectedLeads.length}{" "}
             {selectedLeads.length === 1 ? "lead" : "leads"} selected
           </span>
-          <button
-            onClick={deleteSelectedLeads}
-            className={styles.bulkDeleteButton}
-            disabled={deleteLoading}
-          >
-            {deleteLoading ? (
-              <FaSpinner className={styles.spinner} />
-            ) : (
-              <FaTrash />
-            )}
-            Delete Selected
-          </button>
+          {/* Only show bulk delete button for SuperAdmin, Admin, and EditMode users */}
+          {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+            <button
+              onClick={deleteSelectedLeads}
+              className={styles.bulkDeleteButton}
+              disabled={deleteLoading}
+            >
+              {deleteLoading ? (
+                <FaSpinner className={styles.spinner} />
+              ) : (
+                <FaTrash />
+              )}
+              Delete Selected
+            </button>
+          )}
         </div>
       )}
 
@@ -469,13 +485,16 @@ const Dashboard = () => {
                         </td>
                         <td data-label="Location">{lead.location}</td>
                         <td data-label="Actions">
-                          <button
-                            onClick={() => deleteLead(lead._id)}
-                            className={styles.deleteButton}
-                            disabled={deleteLoading}
-                          >
-                            <FaTrash />
-                          </button>
+                          {/* Only show delete button for SuperAdmin, Admin, and EditMode users */}
+                          {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
+                            <button
+                              onClick={() => deleteLead(lead._id)}
+                              className={styles.deleteButton}
+                              disabled={deleteLoading}
+                            >
+                              <FaTrash />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))

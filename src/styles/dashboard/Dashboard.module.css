@@ -1,8 +1,9 @@
 .dashboardContainer {
-  max-width: 1400px;
-  margin: 2rem auto;
-  padding: 1rem;
+  max-width: 1800px;
+  margin: auto;
+  padding: 2rem 1rem;
   font-family: 'Inter', sans-serif;
+  background-color: white;
 }
 
 .dashboardHeader {
