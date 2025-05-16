@@ -46,12 +46,12 @@ const AdminLogin = () => {
         localStorage.setItem("isAdminLoggedIn", "true");
 
         // Redirect based on role
-        if (data.role === "SuperAdmin" && targetPage === "/dashboard") {
+        if (data.role === "SuperAdmin") {
           router.push("/superadmin");
         } else if (targetPage.startsWith("http")) {
           window.location.href = targetPage;
         } else {
-          router.push(targetPage);
+          router.push("/dashboard");
         }
       } else {
         alert(data.message || "Admin login failed");

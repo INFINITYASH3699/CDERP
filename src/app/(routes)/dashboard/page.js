@@ -356,7 +356,12 @@ const Dashboard = () => {
   };
 
   const goToSuperAdmin = () => {
-    router.push("/superadmin");
+    const role = localStorage.getItem("adminRole");
+    if (role === "SuperAdmin" || role === "Admin") {
+      router.push("/superadmin");
+    } else {
+      alert("You don't have permission to access the Admin Panel");
+    }
   };
 
   // If not authenticated, show loading screen

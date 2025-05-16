@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styles from "@/styles/dashboard/Dashboard.module.css";
 import {
@@ -15,6 +15,7 @@ import {
   FaSignOutAlt,
   FaKey,
   FaSpinner,
+  FaArrowUp,
 } from "react-icons/fa";
 import Link from "next/link";
 
@@ -181,6 +182,9 @@ const AuditLogsPage = () => {
     startDate: "",
     endDate: "",
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
+  const contentRef = useRef(null);
 
   // Authentication check
   useEffect(() => {
@@ -192,7 +196,7 @@ const AuditLogsPage = () => {
       return;
     }
 
-    if (role !== "SuperAdmin") {
+    if (role !== "SuperAdmin" && role !== "Admin") {
       router.push("/dashboard");
       return;
     }
@@ -324,9 +328,32 @@ const AuditLogsPage = () => {
     }
   };
 
+  const scrollToTop = () => {
+    if (contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const changeTab = async (tab) => {
     setActiveTab(tab);
+    setCurrentPage(1);
+    scrollToTop();
   };
+
+  // Handle pagination
+  const goToPage = (page) => {
+    setCurrentPage(page);
+    scrollToTop();
+  };
+
+  // Calculate pagination for current tab data
+  const activeData = activeTab === "audit" ? auditLogs : loginHistory;
+  const totalPages = Math.ceil(activeData.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = activeData.slice(indexOfFirstItem, indexOfLastItem);
 
   if (loading) {
     return (
@@ -350,7 +377,7 @@ const AuditLogsPage = () => {
 
       {error && <div className={styles.errorMessage}>{error}</div>}
 
-      <div className={styles.tabsContainer}>
+      <div className={styles.tabsContainer} ref={contentRef}>
         <div className={styles.tabsList}>
           <button
             className={`${styles.tabButton} ${activeTab === 'audit' ? styles.activeTab : ''}`}
@@ -446,8 +473,8 @@ const AuditLogsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {auditLogs.length > 0 ? (
-                        auditLogs.map((log) => (
+                      {currentItems.length > 0 ? (
+                        currentItems.map((log) => (
                           <tr key={log._id}>
                             <td data-label="Admin">
                               {log.adminId?.username || "Unknown"}
@@ -500,6 +527,41 @@ const AuditLogsPage = () => {
                     </tbody>
                   </table>
                 </div>
+                {totalPages > 1 && (
+                  <div className={styles.pagination}>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      {"<<"}
+                    </button>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      {"<"}
+                    </button>
+                    <span className={styles.pageInfo}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      {">"}
+                    </button>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      {">>"}
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -519,8 +581,8 @@ const AuditLogsPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {loginHistory.length > 0 ? (
-                        loginHistory.map((log) => (
+                      {currentItems.length > 0 ? (
+                        currentItems.map((log) => (
                           <tr key={log._id}>
                             <td data-label="Admin">
                               {log.adminId?.username || "Unknown"}
@@ -568,6 +630,41 @@ const AuditLogsPage = () => {
                     </tbody>
                   </table>
                 </div>
+                {totalPages > 1 && (
+                  <div className={styles.pagination}>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      {"<<"}
+                    </button>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      {"<"}
+                    </button>
+                    <span className={styles.pageInfo}>
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      {">"}
+                    </button>
+                    <button
+                      className={styles.pageButton}
+                      onClick={() => goToPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      {">>"}
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
