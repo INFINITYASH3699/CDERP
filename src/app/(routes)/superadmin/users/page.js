@@ -218,6 +218,7 @@ const UserManagement = () => {
 
   // Find color name by color code
   const getColorName = (colorCode) => {
+    if (!colorCode) return 'Default Blue';
     const colorObj = COLOR_OPTIONS.find(color => color.code === colorCode);
     return colorObj ? colorObj.name : 'Custom';
   };
@@ -256,7 +257,17 @@ const UserManagement = () => {
       }
 
       const data = await response.json();
-      setAdmins(data);
+      console.log("Admin data fetched (raw):", data);
+
+      // Ensure each admin has all required fields with defaults if missing
+      const processedData = data.map(admin => ({
+        ...admin,
+        location: admin.location || "Other",
+        color: admin.color || "#4299e1"
+      }));
+
+      console.log("Admin data processed:", processedData);
+      setAdmins(processedData);
 
     } catch (err) {
       console.error("Error fetching admins:", err);
@@ -333,13 +344,17 @@ const UserManagement = () => {
 
   const openEditModal = (admin) => {
     setSelectedAdmin(admin);
+
+    // Log the admin object for debugging
+    console.log("Opening edit modal for admin:", admin);
+
     setFormData({
       username: admin.username,
       email: admin.email || "",
       role: admin.role,
       active: admin.active,
-      location: admin.location || "Other",
-      color: admin.color || "#4299e1", // Keep the original color
+      location: admin.location,
+      color: admin.color,
       password: "",
       confirmPassword: "",
     });
@@ -428,6 +443,7 @@ const UserManagement = () => {
       }
 
       // Success
+      console.log("Admin created successfully");
       await fetchAdmins(); // Refresh the list
       closeModal();
     } catch (err) {
@@ -446,9 +462,13 @@ const UserManagement = () => {
         color: formData.color,
       };
 
+      console.log("Updating admin with data:", updateData);
+
       // Store the original color for comparison
       const originalColor = selectedAdmin?.color;
       const originalLocation = selectedAdmin?.location;
+
+      console.log("Original values:", { originalColor, originalLocation });
 
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admins/${selectedAdmin._id}`,
@@ -470,13 +490,25 @@ const UserManagement = () => {
 
       // Update local admin data immediately
       if (data && data.admin) {
+        console.log("Admin data updated:", data.admin);
+
+        // Ensure the updated admin has all fields properly set
+        const updatedAdmin = {
+          ...data.admin,
+          location: data.admin.location || formData.location,
+          color: data.admin.color || formData.color
+        };
+
+        console.log("Processed updated admin:", updatedAdmin);
+
         setAdmins(prevAdmins => prevAdmins.map(admin =>
           admin._id === selectedAdmin._id
-            ? { ...admin, ...updateData }
+            ? { ...admin, ...updatedAdmin }
             : admin
         ));
       } else {
         // If we didn't get admin data in response, refresh the whole list
+        console.log("Refreshing admin data after update");
         await fetchAdmins();
       }
 
@@ -663,25 +695,25 @@ const UserManagement = () => {
                       {admin.role}
                     </span>
                   </td>
-                  <td data-label="Location">{admin.location || "Other"}</td>
+                  <td data-label="Location">{admin.location}</td>
                   <td data-label="Color">
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <div style={{
                         width: "24px",
                         height: "24px",
                         borderRadius: "4px",
-                        backgroundColor: admin.color || "#4299e1",
+                        backgroundColor: admin.color,
                         display: "inline-block",
                         border: "1px solid #ddd"
                       }}></div>
-                      <span style={{
+                      {/* <span style={{
                         padding: "2px 8px",
                         borderRadius: "4px",
-                        backgroundColor: `${admin.color || "#4299e1"}20`,
-                        border: `1px solid ${admin.color || "#4299e1"}40`
+                        backgroundColor: `${admin.color}20`,
+                        border: `1px solid ${admin.color}40`
                       }}>
-                        {getColorName(admin.color || "#4299e1")} ({admin.color || "#4299e1"})
-                      </span>
+                        {getColorName(admin.color)} ({admin.color})
+                      </span> */}
                     </div>
                   </td>
                   <td data-label="Status">

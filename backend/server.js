@@ -817,7 +817,7 @@ app.get('/api/admins', authMiddleware, requireRole(['SuperAdmin', 'Admin']), asy
       { role: { $ne: 'SuperAdmin' } } : // Admin users can't view SuperAdmins
       {};
 
-    const admins = await Admin.find(query).select('username email role active createdAt lastLogin').sort({ createdAt: -1 });
+    const admins = await Admin.find(query).select('username email role active createdAt lastLogin location color').sort({ createdAt: -1 });
     res.status(200).json(admins);
   } catch (err) {
     console.error('Error fetching admins:', err);
