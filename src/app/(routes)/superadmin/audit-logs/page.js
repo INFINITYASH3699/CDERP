@@ -84,7 +84,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
   }
 
   if (role !== "SuperAdmin") {
-    // Show restricted message for non-SuperAdmin users
+    // Show complete sidebar with styled restricted message for non-SuperAdmin users
     return (
       <div className={styles.adminPanelContainer}>
         <aside className={styles.sidebar}>
@@ -93,6 +93,60 @@ const SuperAdminLayout = ({ children, activePage }) => {
           </div>
           <nav>
             <ul className={styles.sidebarNav}>
+              <li>
+                <Link
+                  href="/superadmin"
+                  className={styles.sidebarLink}
+                >
+                  <FaTachometerAlt className={styles.sidebarIcon} />
+                  Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/superadmin/users"
+                  className={styles.sidebarLink}
+                >
+                  <FaUserCog className={styles.sidebarIcon} />
+                  User Management
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/superadmin/leads"
+                  className={styles.sidebarLink}
+                >
+                  <FaUsers className={styles.sidebarIcon} />
+                  Lead Management
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/superadmin/analytics"
+                  className={styles.sidebarLink}
+                >
+                  <FaChartBar className={styles.sidebarIcon} />
+                  Analytics
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/superadmin/audit-logs"
+                  className={`${styles.sidebarLink} ${styles.activeLink}`}
+                >
+                  <FaHistory className={styles.sidebarIcon} />
+                  Audit Logs
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/superadmin/roles"
+                  className={styles.sidebarLink}
+                >
+                  <FaKey className={styles.sidebarIcon} />
+                  Role Permissions
+                </Link>
+              </li>
               <li>
                 <Link
                   href="/dashboard"
@@ -115,9 +169,20 @@ const SuperAdminLayout = ({ children, activePage }) => {
           </nav>
         </aside>
         <main className={styles.mainContent}>
-          <div className={styles.errorMessage} style={{ marginTop: "2rem", fontSize: "1.2rem" }}>
-            <FaUserShield style={{ marginRight: "0.5rem", fontSize: "1.5rem" }} />
-            Access Restricted: Only Super Admins can view this page.
+          <div style={{
+            padding: "2rem",
+            textAlign: "center",
+            backgroundColor: "#fff5f5",
+            borderRadius: "8px",
+            border: "1px solid #fc8181",
+            margin: "2rem auto",
+            maxWidth: "800px"
+          }}>
+            <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+            <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
+              You do not have access to the Audit Logs section. Please contact a SuperAdmin for assistance.
+            </p>
+            <p>Your current role permissions do not allow access to this functionality.</p>
           </div>
         </main>
       </div>
@@ -490,7 +555,18 @@ const AuditLogsPage = () => {
         </p>
       </div>
 
-      {error && <div className={styles.errorMessage}>{error}</div>}
+      {error && (
+        <div style={{
+          padding: "1rem",
+          backgroundColor: "#fff5f5",
+          borderRadius: "8px",
+          border: "1px solid #fc8181",
+          margin: "1rem 0",
+          color: "#e53e3e"
+        }}>
+          {error}
+        </div>
+      )}
 
       <div className={styles.tabsContainer}>
         <div className={styles.tabsList}>
@@ -685,7 +761,7 @@ const AuditLogsPage = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className={styles.errorMessage}>
+                          <td colSpan="6" style={{ textAlign: "center", padding: "1.5rem", color: "#e53e3e" }}>
                             No audit logs found
                           </td>
                         </tr>
@@ -753,7 +829,7 @@ const AuditLogsPage = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" className={styles.errorMessage}>
+                          <td colSpan="6" style={{ textAlign: "center", padding: "1.5rem", color: "#e53e3e" }}>
                             No login history found
                           </td>
                         </tr>

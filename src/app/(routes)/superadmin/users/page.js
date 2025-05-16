@@ -21,28 +21,28 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 
-// Array of 20 distinct colors for admin users
+// Array of 20 distinct colors for admin users with names
 const COLOR_OPTIONS = [
-  '#4299e1', // Blue
-  '#48bb78', // Green
-  '#ed8936', // Orange
-  '#f56565', // Red
-  '#9f7aea', // Purple
-  '#667eea', // Indigo
-  '#f687b3', // Pink
-  '#ecc94b', // Yellow
-  '#38b2ac', // Teal
-  '#fc8181', // Light Red
-  '#68d391', // Light Green
-  '#63b3ed', // Light Blue
-  '#4c51bf', // Dark Blue
-  '#6b46c1', // Dark Purple
-  '#dd6b20', // Dark Orange
-  '#805ad5', // Medium Purple
-  '#b794f4', // Light Purple
-  '#9ae6b4', // Light Mint
-  '#f6ad55', // Light Orange
-  '#feb2b2'  // Light Coral
+  { code: '#4299e1', name: 'Blue' },
+  { code: '#48bb78', name: 'Green' },
+  { code: '#ed8936', name: 'Orange' },
+  { code: '#f56565', name: 'Red' },
+  { code: '#9f7aea', name: 'Purple' },
+  { code: '#667eea', name: 'Indigo' },
+  { code: '#f687b3', name: 'Pink' },
+  { code: '#ecc94b', name: 'Yellow' },
+  { code: '#38b2ac', name: 'Teal' },
+  { code: '#fc8181', name: 'Light Red' },
+  { code: '#68d391', name: 'Light Green' },
+  { code: '#63b3ed', name: 'Light Blue' },
+  { code: '#4c51bf', name: 'Dark Blue' },
+  { code: '#6b46c1', name: 'Dark Purple' },
+  { code: '#dd6b20', name: 'Dark Orange' },
+  { code: '#805ad5', name: 'Medium Purple' },
+  { code: '#b794f4', name: 'Light Purple' },
+  { code: '#9ae6b4', name: 'Light Mint' },
+  { code: '#f6ad55', name: 'Light Orange' },
+  { code: '#feb2b2', name: 'Light Coral' }
 ];
 
 // Authenticated fetch utility
@@ -213,7 +213,13 @@ const UserManagement = () => {
   // Get available colors (not used by other admins)
   const getAvailableColors = (currentAdminId = null) => {
     const usedColors = getUsedColors(currentAdminId);
-    return COLOR_OPTIONS.filter(color => !usedColors.includes(color));
+    return COLOR_OPTIONS.filter(color => !usedColors.includes(color.code));
+  };
+
+  // Find color name by color code
+  const getColorName = (colorCode) => {
+    const colorObj = COLOR_OPTIONS.find(color => color.code === colorCode);
+    return colorObj ? colorObj.name : 'Custom';
   };
 
   // Authentication check
@@ -307,6 +313,10 @@ const UserManagement = () => {
   };
 
   const openCreateModal = () => {
+    // Get the first available color or default to blue if none available
+    const availableColors = getAvailableColors();
+    const defaultColor = availableColors.length > 0 ? availableColors[0].code : "#4299e1";
+
     setFormData({
       username: "",
       email: "",
@@ -314,7 +324,7 @@ const UserManagement = () => {
       confirmPassword: "",
       role: "Admin",
       location: "Other",
-      color: "#4299e1",
+      color: defaultColor,
     });
     setFormErrors({});
     setModalType("create");
@@ -329,7 +339,7 @@ const UserManagement = () => {
       role: admin.role,
       active: admin.active,
       location: admin.location || "Other",
-      color: admin.color || "#4299e1",
+      color: admin.color || "#4299e1", // Keep the original color
       password: "",
       confirmPassword: "",
     });
@@ -643,7 +653,7 @@ const UserManagement = () => {
                         display: "inline-block",
                         border: "1px solid #ddd"
                       }}></div>
-                      <span>{admin.color || "#4299e1"}</span>
+                      <span>{getColorName(admin.color || "#4299e1")} ({admin.color || "#4299e1"})</span>
                     </div>
                   </td>
                   <td data-label="Status">
@@ -804,14 +814,16 @@ const UserManagement = () => {
                         >
                           {/* Include current color if editing even if used elsewhere */}
                           {modalType === "edit" && formData.color &&
-                            !getAvailableColors(selectedAdmin?._id).includes(formData.color) && (
-                            <option value={formData.color}>{formData.color} (Current)</option>
+                            !getAvailableColors(selectedAdmin?._id).map(c => c.code).includes(formData.color) && (
+                            <option value={formData.color}>
+                              {getColorName(formData.color)} ({formData.color}) - Current
+                            </option>
                           )}
 
                           {/* List available colors */}
                           {getAvailableColors(selectedAdmin?._id).map((color, index) => (
-                            <option key={index} value={color}>
-                              {color}
+                            <option key={index} value={color.code}>
+                              {color.name} ({color.code})
                             </option>
                           ))}
                         </select>
