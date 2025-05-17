@@ -16,6 +16,8 @@ import {
   FaTimes,
   FaWindowClose,
 } from "react-icons/fa";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 // Utility function for authenticated API requests
 const fetchWithAuth = async (url, options = {}) => {
@@ -410,13 +412,152 @@ const Dashboard = () => {
     }
   };
 
-  // Download CSV file with all leads data
+  // Download Excel file with all leads data and formatting
   const downloadCSV = () => {
     if (leads.length === 0) {
       alert("No data to download");
       return;
     }
 
+    try {
+      // First, prepare the data in a simple 2D array format
+      // with headers as the first row
+      const headers = [
+        "Sr. No.",
+        "Name",
+        "Mobile Number",
+        "Course Name",
+        "Email ID",
+        "Date & Time",
+        "Location",
+        "Assigned To",
+        "Contacted Score",
+        "Contacted Comment",
+        "Status"
+      ];
+
+      // Add all lead data
+      const data = [headers];
+
+      leads.forEach((lead, index) => {
+        const formattedDate = new Date(lead.createdAt).toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+
+        data.push([
+          index + 1,
+          lead.name || "",
+          lead.contact || "",
+          lead.coursename || "",
+          lead.email || "",
+          formattedDate,
+          lead.location || "",
+          lead.assignedTo ? lead.assignedTo.username : "Not Assigned",
+          lead.contactedScore || "",
+          lead.contactedComment || "",
+          lead.status || "New",
+        ]);
+      });
+
+      // Create a workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 8 },  // Sr. No.
+        { wch: 25 }, // Name
+        { wch: 15 }, // Mobile Number
+        { wch: 25 }, // Course Name
+        { wch: 30 }, // Email ID
+        { wch: 22 }, // Date & Time
+        { wch: 15 }, // Location
+        { wch: 15 }, // Assigned To
+        { wch: 15 }, // Contacted Score
+        { wch: 30 }, // Contacted Comment
+        { wch: 12 }  // Status
+      ];
+
+      // Style header row
+      for (let i = 0; i < headers.length; i++) {
+        const cellAddress = XLSX.utils.encode_cell({r: 0, c: i});
+        ws[cellAddress].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { patternType: 'solid', fgColor: { rgb: "4A5568" } }
+        };
+      }
+
+      // Style data rows based on status
+      for (let i = 1; i < data.length; i++) {
+        const status = data[i][10]; // Status column is index 10
+        let fillColor;
+
+        // Set color based on status
+        if (status === "Contacted") {
+          fillColor = "BEE3F8"; // Light blue
+        } else if (status === "Converted") {
+          fillColor = "C6F6D5"; // Light green
+        } else if (status === "Rejected") {
+          fillColor = "FED7D7"; // Light red
+        } else {
+          fillColor = "E2E8F0"; // Light gray (for New status)
+        }
+
+        // Apply the style to each cell in the row
+        for (let j = 0; j < data[i].length; j++) {
+          const cellAddress = XLSX.utils.encode_cell({r: i, c: j});
+
+          if (!ws[cellAddress]) {
+            ws[cellAddress] = { v: data[i][j] };
+          }
+
+          // Set fill color style with pattern type
+          ws[cellAddress].s = {
+            fill: {
+              patternType: 'solid',
+              fgColor: { rgb: fillColor }
+            }
+          };
+        }
+      }
+
+      // Add the worksheet to the workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Leads");
+
+      // Generate binary Excel and download
+      const excelBinary = XLSX.write(wb, {
+        bookType: 'xlsx',
+        type: 'binary',
+        cellStyles: true
+      });
+
+      // Convert binary to Blob
+      const buffer = new ArrayBuffer(excelBinary.length);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < excelBinary.length; i++) {
+        view[i] = excelBinary.charCodeAt(i) & 0xFF;
+      }
+
+      // Create blob and download
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `leads_export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+      console.log("Excel file exported with row colors based on status");
+    } catch (error) {
+      console.error("Error exporting Excel file:", error);
+      alert(`Error creating Excel file: ${error.message}. Falling back to CSV export.`);
+      fallbackCSVExport();
+    }
+  };
+
+  // Fallback CSV export in case the Excel export fails
+  const fallbackCSVExport = () => {
     // Create CSV header
     const headers = [
       "Sr. No.",
@@ -432,34 +573,60 @@ const Dashboard = () => {
       "Status",
     ];
 
-    // Format each lead data as CSV row
+    // Helper function to properly escape CSV fields
+    const escapeCsvField = (field) => {
+      if (field === null || field === undefined) return '""';
+
+      // Convert to string
+      const str = String(field);
+
+      // Escape quotes by doubling them and always wrap in quotes
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    // Format each lead data as CSV row with proper escaping
     const csvRows = leads.map((lead, index) => {
+      const formattedDate = new Date(lead.createdAt).toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+
       return [
-        index + 1,
-        lead.name || "",
-        lead.contact || "",
-        lead.coursename || "",
-        lead.email || "",
-        new Date(lead.createdAt).toLocaleString(),
-        lead.location || "",
-        lead.assignedTo ? lead.assignedTo.username : "Not Assigned",
-        lead.contactedScore || "",
-        `"${(lead.contactedComment || "").replace(/"/g, '""')}"`, // Escape quotes for CSV
-        lead.status || "New",
+        escapeCsvField(index + 1),
+        escapeCsvField(lead.name || ""),
+        escapeCsvField(lead.contact || ""),
+        escapeCsvField(lead.coursename || ""),
+        escapeCsvField(lead.email || ""),
+        escapeCsvField(formattedDate),
+        escapeCsvField(lead.location || ""),
+        escapeCsvField(lead.assignedTo ? lead.assignedTo.username : "Not Assigned"),
+        escapeCsvField(lead.contactedScore || ""),
+        escapeCsvField(lead.contactedComment || ""),
+        escapeCsvField(lead.status || "New"),
       ];
     });
 
-    // Convert to CSV string
+    // Create a BOM (Byte Order Mark) for Excel to recognize UTF-8
+    const BOM = "\uFEFF";
+
+    // Convert to CSV string with proper formatting
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      headers.join(",") +
-      "\n" +
-      csvRows.map((row) => row.join(",")).join("\n");
+      encodeURIComponent(
+        BOM +
+        headers.map(header => escapeCsvField(header)).join(",") +
+        "\n" +
+        csvRows.map((row) => row.join(",")).join("\n")
+      );
 
     // Create download link
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", csvContent);
     link.setAttribute(
       "download",
       `leads_export_${new Date().toISOString().slice(0, 10)}.csv`
@@ -467,6 +634,8 @@ const Dashboard = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    alert("Basic CSV exported. For better formatting, please try again later.");
   };
 
   // Select/deselect a lead
@@ -541,7 +710,6 @@ const Dashboard = () => {
           <button onClick={handleRefresh} className={styles.actionButton}>
             <FaSync /> Refresh
           </button>
-          {/* Only SuperAdmin and Admin users can access the SuperAdmin panel */}
           {(userRole === "SuperAdmin" || userRole === "Admin") && (
             <button onClick={goToSuperAdmin} className={styles.actionButton}>
               <FaUserCog /> Admin Panel
@@ -562,7 +730,6 @@ const Dashboard = () => {
             {selectedLeads.length}{" "}
             {selectedLeads.length === 1 ? "lead" : "leads"} selected
           </span>
-          {/* Only show bulk delete button for SuperAdmin, Admin, and EditMode users */}
           {(userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode") && (
             <button
               onClick={deleteSelectedLeads}
