@@ -375,6 +375,10 @@ const AuditLogsPage = () => {
       if (filterObj.action) queryParams.append('action', filterObj.action);
       if (filterObj.startDate) queryParams.append('startDate', filterObj.startDate);
       if (filterObj.endDate) queryParams.append('endDate', filterObj.endDate);
+
+      // Always exclude login actions from audit logs tab
+      queryParams.append('excludeActions', 'login');
+
       queryParams.append('page', page);
       queryParams.append('limit', logsPerPage);
 
@@ -620,7 +624,7 @@ const AuditLogsPage = () => {
                   <option value="create_lead">Create Lead</option>
                   <option value="update_lead">Update Lead</option>
                   <option value="delete_lead">Delete Lead</option>
-                  <option value="login">Login</option>
+                  {/* Removed login option since it's in Login History tab */}
                   <option value="create_admin">Create Admin</option>
                   <option value="update_admin">Update Admin</option>
                   <option value="delete_admin">Delete Admin</option>

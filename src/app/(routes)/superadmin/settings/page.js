@@ -9,13 +9,129 @@ import {
   FaTimes,
   FaToggleOn,
   FaToggleOff,
-  FaInfoCircle
+  FaInfoCircle,
+  FaUserCog,
+  FaUsers,
+  FaChartBar,
+  FaClipboardList,
+  FaHistory,
+  FaSignOutAlt,
+  FaTachometerAlt,
+  FaKey
 } from "react-icons/fa";
+import Link from "next/link";
 
 // SuperAdmin Layout Component (imported from parent page)
 const SuperAdminLayout = ({ children, activePage }) => {
-  // This component will be provided by the parent layout - this is just a stub for when page is loaded directly
-  return children;
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // Clear all auth data
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminRole");
+    localStorage.removeItem("adminUsername");
+    localStorage.removeItem("adminId");
+    localStorage.removeItem("isAdminLoggedIn");
+    router.push("/AdminLogin");
+  };
+
+  return (
+    <div className={styles.adminPanelContainer}>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHeader}>
+          <h2 className={styles.sidebarTitle}>Super Admin</h2>
+        </div>
+        <nav>
+          <ul className={styles.sidebarNav}>
+            <li>
+              <Link
+                href="/superadmin"
+                className={`${styles.sidebarLink} ${activePage === 'dashboard' ? styles.activeLink : ''}`}
+              >
+                <FaTachometerAlt className={styles.sidebarIcon} />
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/users"
+                className={`${styles.sidebarLink} ${activePage === 'users' ? styles.activeLink : ''}`}
+              >
+                <FaUserCog className={styles.sidebarIcon} />
+                User Management
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/leads"
+                className={`${styles.sidebarLink} ${activePage === 'leads' ? styles.activeLink : ''}`}
+              >
+                <FaUsers className={styles.sidebarIcon} />
+                Lead Management
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/analytics"
+                className={`${styles.sidebarLink} ${activePage === 'analytics' ? styles.activeLink : ''}`}
+              >
+                <FaChartBar className={styles.sidebarIcon} />
+                Analytics
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/audit-logs"
+                className={`${styles.sidebarLink} ${activePage === 'audit-logs' ? styles.activeLink : ''}`}
+              >
+                <FaHistory className={styles.sidebarIcon} />
+                Audit Logs
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/roles"
+                className={`${styles.sidebarLink} ${activePage === 'roles' ? styles.activeLink : ''}`}
+              >
+                <FaKey className={styles.sidebarIcon} />
+                Role Permissions
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/superadmin/settings"
+                className={`${styles.sidebarLink} ${activePage === 'settings' ? styles.activeLink : ''}`}
+              >
+                <FaCog className={styles.sidebarIcon} />
+                Settings
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/dashboard"
+                className={styles.sidebarLink}
+              >
+                <FaClipboardList className={styles.sidebarIcon} />
+                Go to Dashboard
+              </Link>
+            </li>
+            <li>
+              <a href="#"
+                onClick={handleLogout}
+                className={styles.sidebarLink}
+              >
+                <FaSignOutAlt className={styles.sidebarIcon} />
+                Logout
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+      <main className={styles.mainContent}>
+        {children}
+      </main>
+    </div>
+  );
 };
 
 // Utility function for authenticated API requests
@@ -160,7 +276,7 @@ const SettingsPage = () => {
             <div className={styles.settingInfo}>
               <h3 className={styles.settingTitle}>Restrict Lead Editing</h3>
               <p className={styles.settingDescription}>
-                When enabled, only admins or assigned users can edit lead status and contacted fields
+                When enabled, only admins or assigned users can edit lead status and contacted fields in dashboard page
               </p>
               {setting.value ? (
                 <div className={styles.settingStatus}>
