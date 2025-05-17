@@ -741,10 +741,38 @@ const AuditLogsPage = () => {
                                         <strong>Contact:</strong> {log.metadata.leadContact}
                                       </div>
                                     )}
-                                    {log.metadata.updateFields && (
+                                    {log.metadata && log.metadata.updateFields && (
                                       <div className={styles.auditDetail}>
                                         <strong>Updated Fields:</strong>
-                                        <pre>{JSON.stringify(log.metadata.updateFields, null, 2)}</pre>
+                                        <pre style={{
+                                          margin: "8px 0",
+                                          padding: "12px",
+                                          backgroundColor: "#f8f9fa",
+                                          borderRadius: "4px",
+                                          border: "1px solid #eaeaea",
+                                          fontSize: "13px",
+                                          whiteSpace: "pre-wrap",
+                                          wordBreak: "break-word"
+                                        }}>
+                                          {(() => {
+                                            // Extremely safe rendering of updateFields
+                                            const updateFields = log?.metadata?.updateFields;
+                                            if (
+                                              updateFields &&
+                                              typeof updateFields === "object" &&
+                                              !Array.isArray(updateFields)
+                                            ) {
+                                              try {
+                                                return JSON.stringify(updateFields, null, 2);
+                                              } catch (e) {
+                                                return "[Unable to display updateFields]";
+                                              }
+                                            }
+                                            if (updateFields === null) return "null";
+                                            if (updateFields === undefined) return "undefined";
+                                            return String(updateFields);
+                                          })()}
+                                        </pre>
                                       </div>
                                     )}
                                     {!log.metadata.userId && !log.metadata.updateFields && (

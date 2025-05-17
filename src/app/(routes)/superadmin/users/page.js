@@ -373,6 +373,8 @@ const UserManagement = () => {
     setSelectedAdmin(admin);
     setFormData({
       ...formData,
+      username: admin.username,
+      email: admin.email || "",
       password: "",
       confirmPassword: "",
     });
@@ -526,6 +528,24 @@ const UserManagement = () => {
 
   const resetPassword = async () => {
     try {
+      // Check if password is provided
+      if (!formData.password) {
+        setFormErrors({
+          ...formErrors,
+          password: "Password is required"
+        });
+        return;
+      }
+
+      // Check if passwords match
+      if (formData.password !== formData.confirmPassword) {
+        setFormErrors({
+          ...formErrors,
+          confirmPassword: "Passwords don't match"
+        });
+        return;
+      }
+
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/admins/${selectedAdmin._id}`,
         {
@@ -548,6 +568,7 @@ const UserManagement = () => {
       closeModal();
       alert("Password has been reset successfully");
     } catch (err) {
+      console.error("Error resetting password:", err);
       setError(err.message);
       throw err;
     }

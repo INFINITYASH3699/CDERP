@@ -446,6 +446,15 @@ const LeadManagementPage = () => {
 
   const updateLead = async () => {
     try {
+      const leadData = { ...formData };
+
+      // Convert empty strings to null for certain fields
+      if (leadData.assignedTo === "") {
+        leadData.assignedTo = null;
+      }
+
+      console.log("Updating lead with data:", leadData);
+
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/users/${selectedLead._id}`,
         {
@@ -453,20 +462,22 @@ const LeadManagementPage = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(leadData),
         }
       );
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || "Failed to update lead");
+        const errorData = await response.json();
+        console.error("Error response:", errorData);
+        throw new Error(errorData.message || "Failed to update lead");
       }
 
       // Success
       await fetchLeads(); // Refresh the list
       closeModal();
     } catch (err) {
-      setError(err.message);
+      console.error("Error updating lead:", err);
+      setError(err.message || "Error updating lead. Please try again.");
       throw err;
     }
   };
@@ -1042,31 +1053,33 @@ const LeadManagementPage = () => {
                     <td data-label="Created">
                       {formatDate(lead.createdAt)}
                     </td>
-                    <td data-label="Actions" style={{ display: "flex", gap: "0.5rem" }}>
-                      <button
-                        onClick={() => openEditModal(lead)}
-                        className={`${styles.button} ${styles.secondaryButton}`}
-                        style={{ padding: "0.25rem 0.5rem" }}
-                        title="Edit"
-                      >
-                        <FaEdit />
-                      </button>
-                      <button
-                        onClick={() => openAssignModal(lead)}
-                        className={`${styles.button} ${styles.secondaryButton}`}
-                        style={{ padding: "0.25rem 0.5rem" }}
-                        title="Assign"
-                      >
-                        <FaUserEdit />
-                      </button>
-                      <button
-                        onClick={() => deleteLead(lead._id)}
-                        className={`${styles.button} ${styles.dangerButton}`}
-                        style={{ padding: "0.25rem 0.5rem" }}
-                        title="Delete"
-                      >
-                        <FaTrash />
-                      </button>
+                    <td data-label="Actions">
+                      <div className={styles.actionButtonsContainer}>
+                        <button
+                          onClick={() => openEditModal(lead)}
+                          className={`${styles.button} ${styles.secondaryButton}`}
+                          style={{ padding: "0.25rem 0.5rem" }}
+                          title="Edit"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          onClick={() => openAssignModal(lead)}
+                          className={`${styles.button} ${styles.secondaryButton}`}
+                          style={{ padding: "0.25rem 0.5rem" }}
+                          title="Assign"
+                        >
+                          <FaUserEdit />
+                        </button>
+                        <button
+                          onClick={() => deleteLead(lead._id)}
+                          className={`${styles.button} ${styles.dangerButton}`}
+                          style={{ padding: "0.25rem 0.5rem" }}
+                          title="Delete"
+                        >
+                          <FaTrash />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

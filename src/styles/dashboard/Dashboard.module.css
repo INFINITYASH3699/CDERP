@@ -67,29 +67,71 @@
   margin-bottom: 1.5rem;
 }
 
+/* Add these improved styles to fix overflow issues */
+
+/* Responsive table improvements */
 .tableResponsive {
   overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
 }
 
+/* Ensure the table fits within the container */
 .table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 800px; /* Minimum width to ensure proper display */
 }
 
-.table th, .table td {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  border-bottom: 1px solid #e2e8f0;
-}
-
+/* Table header styles */
 .table th {
   background-color: #f7fafc;
   font-weight: 600;
   color: #4a5568;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table tr:hover {
   background-color: #f7fafc;
+}
+
+/* Better control of cell widths */
+.table th, .table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Maximum width for content cells */
+}
+
+/* Special widths for common columns */
+.table th:nth-child(2), .table td:nth-child(2) {
+  min-width: 150px; /* Name column */
+  max-width: 200px;
+}
+
+.table th:nth-child(3), .table td:nth-child(3),
+.table th:nth-child(4), .table td:nth-child(4) {
+  min-width: 130px; /* Contact and Email columns */
+  max-width: 180px;
+}
+
+.table th:nth-child(5), .table td:nth-child(5),
+.table th:nth-child(6), .table td:nth-child(6) {
+  min-width: 100px; /* Course and Location columns */
+  max-width: 150px;
+}
+
+/* Container for the actions column buttons */
+.actionButtonsContainer {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
 }
 
 .checkboxColumn {
@@ -357,8 +399,9 @@
 /* Forms */
 .formGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  width: 100%;
 }
 
 .formGroup {
@@ -466,11 +509,12 @@
 
 /* Charts */
 .chartContainer {
-  background-color: white;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: #ffffff;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  overflow: hidden;
 }
 
 .chartTitle {
