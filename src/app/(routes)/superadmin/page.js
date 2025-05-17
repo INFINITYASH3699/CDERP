@@ -173,6 +173,15 @@ const SuperAdminLayout = ({ children, activePage }) => {
             </li>
             <li>
               <Link
+                href="/superadmin/settings"
+                className={`${styles.sidebarLink} ${activePage === 'settings' ? styles.activeLink : ''}`}
+              >
+                <FaCog className={styles.sidebarIcon} />
+                Settings
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/dashboard"
                 className={styles.sidebarLink}
               >

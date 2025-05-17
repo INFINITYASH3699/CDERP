@@ -67,6 +67,8 @@ const Dashboard = () => {
     status: "",
   });
   const [updateLoading, setUpdateLoading] = useState(false);
+  // Settings state
+  const [restrictLeadEditing, setRestrictLeadEditing] = useState(false);
   // New state for modal
   const [showModal, setShowModal] = useState(false);
   const [selectedLeadForModal, setSelectedLeadForModal] = useState(null);
@@ -106,8 +108,27 @@ const Dashboard = () => {
     if (checkAuth()) {
       setIsAuthenticated(true);
       fetchLeads();
+      fetchSettings();
     }
   }, [router]);
+
+  // Fetch application settings
+  const fetchSettings = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/restrictLeadEditing`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setRestrictLeadEditing(data.value);
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      // Default to false if setting can't be fetched
+      setRestrictLeadEditing(false);
+    }
+  };
 
   // Check "select all" status when leads or selection changes
   useEffect(() => {
@@ -211,6 +232,10 @@ const Dashboard = () => {
       );
 
       if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 403 && errorData.restricted) {
+          throw new Error("Access restricted: You can only edit leads assigned to you when restriction mode is enabled.");
+        }
         throw new Error("Failed to update lead");
       }
 
@@ -868,12 +893,28 @@ const Dashboard = () => {
                         </td>
                         <td data-label="Actions">
                           <div className={styles.actionButtons}>
-                            <button
-                              onClick={() => openEditModal(lead)}
-                              className={styles.editButton}
-                            >
-                              <FaEdit />
-                            </button>
+                            {/* Show edit button based on restrictions */}
+                            {(!restrictLeadEditing || // No restriction
+                              userRole === "SuperAdmin" || // SuperAdmin bypass
+                              userRole === "Admin" || // Admin bypass
+                              (lead.assignedTo && lead.assignedTo._id === localStorage.getItem("adminId")) // Assigned user
+                            ) ? (
+                              <button
+                                onClick={() => openEditModal(lead)}
+                                className={styles.editButton}
+                              >
+                                <FaEdit />
+                              </button>
+                            ) : (
+                              <button
+                                className={styles.editButton}
+                                style={{ opacity: 0.3, cursor: 'not-allowed' }}
+                                title="Editing restricted to assigned user or admin"
+                                disabled
+                              >
+                                <FaEdit />
+                              </button>
+                            )}
                             {(userRole === "SuperAdmin" ||
                               userRole === "Admin" ||
                               userRole === "EditMode") && (

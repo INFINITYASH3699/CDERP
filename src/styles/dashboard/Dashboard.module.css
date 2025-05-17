@@ -926,3 +926,154 @@
   position: relative;
   width: 100%;
 }
+
+/* Settings page styles */
+.settingsContainer {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.settingItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.settingItem:last-child {
+  border-bottom: none;
+}
+
+.settingInfo {
+  flex: 1;
+}
+
+.settingTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+}
+
+.settingDescription {
+  color: #718096;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.settingStatus {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.statusIconActive {
+  color: #48bb78;
+  margin-right: 0.5rem;
+}
+
+.statusIconInactive {
+  color: #f56565;
+  margin-right: 0.5rem;
+}
+
+.statusTextActive {
+  color: #48bb78;
+  font-weight: 500;
+}
+
+.statusTextInactive {
+  color: #f56565;
+  font-weight: 500;
+}
+
+.settingAction {
+  margin-left: 1.5rem;
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.toggleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleIconOn {
+  color: #4299e1;
+  font-size: 2.5rem;
+}
+
+.toggleIconOff {
+  color: #a0aec0;
+  font-size: 2.5rem;
+}
+
+.headerIcon {
+  margin-right: 0.5rem;
+}
+
+.noSettings {
+  text-align: center;
+  padding: 2rem 0;
+  color: #718096;
+}
+
+.savingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.savingContent {
+  background-color: white;
+  padding: 1.5rem 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.successMessage {
+  background-color: #f0fff4;
+  border-left: 4px solid #48bb78;
+  color: #2f855a;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.successIcon {
+  margin-right: 0.5rem;
+}
+
+.settingValue {
+  background-color: #f7fafc;
+  padding: 0.75rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  max-width: 100%;
+  color: #4a5568;
+}
