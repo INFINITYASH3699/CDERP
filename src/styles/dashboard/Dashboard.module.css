@@ -133,13 +133,13 @@
 
 /* Special widths for common columns */
 .table th:nth-child(2), .table td:nth-child(2) {
-  min-width: 150px; /* Name column */
+  min-width: 50px; /* Name column */
   max-width: 200px;
 }
 
 .table th:nth-child(3), .table td:nth-child(3),
 .table th:nth-child(4), .table td:nth-child(4) {
-  min-width: 130px; /* Contact and Email columns */
+  min-width: 80px; /* Contact and Email columns */
   max-width: 180px;
 }
 
@@ -160,6 +160,11 @@
 
 .checkboxColumn {
   width: 3rem;
+}
+
+.viewColumn {
+  width: 3rem;
+  text-align: center;
 }
 
 .checkboxWrapper {
@@ -787,6 +792,44 @@
   }
 }
 
+/* Lead details view modal styles */
+.leadDetailsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .leadDetailsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Make some items span full width */
+  .leadDetailsGrid > div:nth-child(3), /* Email */
+  .leadDetailsGrid > div:nth-child(9) { /* Contacted Comment */
+    grid-column: span 2;
+  }
+}
+
+.leadDetailItem {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.75rem;
+}
+
+.leadDetailLabel {
+  font-size: 0.875rem;
+  color: #718096;
+  margin: 0 0 0.25rem 0;
+  font-weight: 600;
+}
+
+.leadDetailValue {
+  font-size: 1rem;
+  color: #2d3748;
+  margin: 0;
+  word-break: break-word;
+}
+
 /* Add the following CSS classes to the existing Dashboard.module.css */
 
 .editForm {
@@ -821,7 +864,7 @@
   justify-content: center;
 }
 
-.editButton, .saveButton, .cancelButton {
+.editButton, .saveButton, .cancelButton, .viewButton {
   background-color: transparent;
   border: none;
   cursor: pointer;
@@ -834,6 +877,10 @@
   transition: all 0.2s;
 }
 
+.viewButton {
+  color: #805ad5; /* Purple color for view button */
+}
+
 .editButton {
   color: #4299e1;
 }
@@ -844,6 +891,10 @@
 
 .cancelButton {
   color: #f56565;
+}
+
+.viewButton:hover {
+  background-color: rgba(128, 90, 213, 0.1);
 }
 
 .editButton:hover {

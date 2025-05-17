@@ -15,6 +15,7 @@ import {
   FaSave,
   FaTimes,
   FaWindowClose,
+  FaEye,
 } from "react-icons/fa";
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -69,8 +70,9 @@ const Dashboard = () => {
   const [updateLoading, setUpdateLoading] = useState(false);
   // Settings state
   const [restrictLeadEditing, setRestrictLeadEditing] = useState(false);
-  // New state for modal
+  // States for modals
   const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedLeadForModal, setSelectedLeadForModal] = useState(null);
 
   const router = useRouter();
@@ -194,9 +196,21 @@ const Dashboard = () => {
     setShowModal(true);
   };
 
-  // Close the modal
+  // Open view modal for a lead
+  const openViewModal = (lead) => {
+    setSelectedLeadForModal(lead);
+    setShowViewModal(true);
+  };
+
+  // Close the edit modal
   const closeModal = () => {
     setShowModal(false);
+    setSelectedLeadForModal(null);
+  };
+
+  // Close the view modal
+  const closeViewModal = () => {
+    setShowViewModal(false);
     setSelectedLeadForModal(null);
     setEditFormData({
       contactedScore: "",
@@ -472,7 +486,8 @@ const Dashboard = () => {
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
-          hour12: true
+          hour12: true,
+          timeZone: 'Asia/Kolkata' // Added IST timezone
         });
 
         data.push([
@@ -800,6 +815,7 @@ const Dashboard = () => {
                         </div>
                       </th>
                     )}
+                    <th className={styles.viewColumn}>View</th>
                     <th>Sr. No.</th>
                     <th>Name</th>
                     <th>Mobile Number</th>
@@ -840,6 +856,15 @@ const Dashboard = () => {
                             </div>
                           </td>
                         )}
+                        <td data-label="View" className={styles.viewColumn}>
+                          <button
+                            onClick={() => openViewModal(lead)}
+                            className={styles.viewButton}
+                            title="View Lead Details"
+                          >
+                            <FaEye />
+                          </button>
+                        </td>
                         <td data-label="Sr. No.">
                           {indexOfFirstLead + index + 1}
                         </td>
@@ -851,7 +876,7 @@ const Dashboard = () => {
                           {new Date(lead.createdAt).toLocaleString(
                             "en-US",
                             {
-                              timeZone: "UTC",
+                              timeZone: "Asia/Kolkata", // Changed from UTC to IST timezone
                             }
                           )}
                         </td>
@@ -932,7 +957,7 @@ const Dashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode" ? 12 : 11} className={styles.errorMessage}>
+                      <td colSpan={userRole === "SuperAdmin" || userRole === "Admin" || userRole === "EditMode" ? 13 : 12} className={styles.errorMessage}>
                         No leads found
                       </td>
                     </tr>
@@ -1044,6 +1069,111 @@ const Dashboard = () => {
                 ) : (
                   "Save Changes"
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {showViewModal && selectedLeadForModal && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}>
+                Lead Details: {selectedLeadForModal.name}
+              </h3>
+              <button
+                onClick={closeViewModal}
+                className={styles.modalCloseButton}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.leadDetailsGrid}>
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Name:</h4>
+                  <p className={styles.leadDetailValue}>{selectedLeadForModal.name}</p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Mobile Number:</h4>
+                  <p className={styles.leadDetailValue}>{selectedLeadForModal.contact}</p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Email:</h4>
+                  <p className={styles.leadDetailValue}>{selectedLeadForModal.email}</p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Course Name:</h4>
+                  <p className={styles.leadDetailValue}>{selectedLeadForModal.coursename}</p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Location:</h4>
+                  <p className={styles.leadDetailValue}>{selectedLeadForModal.location}</p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Date & Time:</h4>
+                  <p className={styles.leadDetailValue}>
+                    {new Date(selectedLeadForModal.createdAt).toLocaleString(
+                      "en-US",
+                      {
+                        timeZone: "Asia/Kolkata", // Using IST timezone
+                      }
+                    )}
+                  </p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Assigned To:</h4>
+                  <p className={styles.leadDetailValue}>
+                    {selectedLeadForModal.assignedTo ? selectedLeadForModal.assignedTo.username : "Not Assigned"}
+                  </p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Contacted Score:</h4>
+                  <p className={styles.leadDetailValue}>
+                    {selectedLeadForModal.contactedScore ? selectedLeadForModal.contactedScore : "Not set"}
+                  </p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Contacted Comment:</h4>
+                  <p className={styles.leadDetailValue}>
+                    {selectedLeadForModal.contactedComment ? selectedLeadForModal.contactedComment : "No comment"}
+                  </p>
+                </div>
+
+                <div className={styles.leadDetailItem}>
+                  <h4 className={styles.leadDetailLabel}>Status:</h4>
+                  <span
+                    className={`${styles.statusBadge} ${
+                      selectedLeadForModal.status === "Converted"
+                        ? styles.convertedStatus
+                        : selectedLeadForModal.status === "Contacted"
+                        ? styles.contactedStatus
+                        : selectedLeadForModal.status === "Rejected"
+                        ? styles.rejectedStatus
+                        : styles.newStatus
+                    }`}
+                  >
+                    {selectedLeadForModal.status || "New"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className={styles.modalFooter}>
+              <button
+                onClick={closeViewModal}
+                className={`${styles.button} ${styles.secondaryButton}`}
+              >
+                Close
               </button>
             </div>
           </div>
