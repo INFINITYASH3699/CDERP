@@ -17,9 +17,11 @@ import {
   FaHistory,
   FaSignOutAlt,
   FaTachometerAlt,
-  FaKey
+  FaKey,
+  FaMapMarkerAlt
 } from "react-icons/fa";
 import Link from "next/link";
+import LocationAssignmentModal from "@/components/superadmin/LocationAssignmentModal";
 
 // SuperAdmin Layout Component (imported from parent page)
 const SuperAdminLayout = ({ children, activePage }) => {
@@ -173,6 +175,10 @@ const SettingsPage = () => {
   const [success, setSuccess] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [totalLeads, setTotalLeads] = useState(0);
+  const [sliderValue, setSliderValue] = useState(0); // Add this new state for temporary slider value
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationAssignments, setLocationAssignments] = useState({});
+  const [admins, setAdmins] = useState([]);
   const router = useRouter();
 
   // Authentication check
@@ -193,12 +199,43 @@ const SettingsPage = () => {
 
     fetchSettings();
     fetchLeadCount();
+    fetchAdmins();
+    // eslint-disable-next-line
   }, [router]);
+
+  // Update the slider value when settings change
+  useEffect(() => {
+    const maxLeadsSetting = settings.find(s => s.key === 'maxLeadsToDisplay');
+    if (maxLeadsSetting) {
+      setSliderValue(maxLeadsSetting.value);
+    }
+
+    // Get location assignments setting
+    const locationAssignmentsSetting = settings.find(s => s.key === 'locationAssignments');
+    if (locationAssignmentsSetting) {
+      console.log("Found locationAssignments setting:", locationAssignmentsSetting);
+
+      if (typeof locationAssignmentsSetting.value === 'object') {
+        console.log("Setting location assignments:", locationAssignmentsSetting.value);
+        setLocationAssignments(locationAssignmentsSetting.value);
+      } else {
+        console.warn("locationAssignments value is not an object:", locationAssignmentsSetting.value);
+        // Initialize with empty object if value is invalid
+        setLocationAssignments({});
+      }
+    } else {
+      console.log("No locationAssignments setting found, initializing...");
+      // Create the setting if it doesn't exist
+      updateSetting('locationAssignments', {});
+    }
+    // eslint-disable-next-line
+  }, [settings]);
 
   const fetchSettings = async () => {
     setLoading(true);
     setError(null);
     try {
+      console.log("Fetching settings...");
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/settings`
       );
@@ -208,6 +245,14 @@ const SettingsPage = () => {
       }
 
       const data = await response.json();
+      console.log("Settings fetched:", data);
+
+      // Check if locationAssignments exists
+      const hasLocationAssignments = data.some(s => s.key === 'locationAssignments');
+      if (!hasLocationAssignments) {
+        console.log("locationAssignments setting not found, will create it");
+      }
+
       setSettings(data);
     } catch (err) {
       console.error("Error fetching settings:", err);
@@ -233,6 +278,23 @@ const SettingsPage = () => {
       console.error("Error fetching lead count:", err);
       // Default to 300 if we can't get the count
       setTotalLeads(300);
+    }
+  };
+
+  const fetchAdmins = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admins`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch admins list");
+      }
+
+      const data = await response.json();
+      setAdmins(data);
+    } catch (err) {
+      console.error("Error fetching admins:", err);
     }
   };
 
@@ -285,6 +347,93 @@ const SettingsPage = () => {
     const setting = settings.find(s => s.key === key);
     if (setting) {
       updateSetting(key, !setting.value);
+    }
+  };
+
+  const handleSaveLocationAssignments = async (assignments) => {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      console.log("Saving location assignments:", assignments);
+
+      // First check if the locationAssignments setting exists
+      const existingSetting = settings.find(s => s.key === 'locationAssignments');
+      const method = existingSetting ? "PUT" : "POST";
+      const url = existingSetting
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/settings/locationAssignments`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/settings`;
+
+      const requestBody = existingSetting
+        ? {
+            value: assignments,
+            description: "Location to counselor mapping for automatic assignment"
+          }
+        : {
+            key: 'locationAssignments',
+            value: assignments,
+            description: "Location to counselor mapping for automatic assignment"
+          };
+
+      console.log(`Sending ${method} request to ${url} with body:`, requestBody);
+
+      // Update the location assignments setting
+      const response = await fetchWithAuth(
+        url,
+        {
+          method: method,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Server error response:", errorData);
+        throw new Error("Failed to update location assignments");
+      }
+
+      const responseData = await response.json();
+      console.log("Server response:", responseData);
+
+      // Update the local state
+      setLocationAssignments(assignments);
+
+      // Update the settings state
+      setSettings(prevSettings => {
+        const settingExists = prevSettings.some(s => s.key === 'locationAssignments');
+
+        if (settingExists) {
+          return prevSettings.map(setting =>
+            setting.key === 'locationAssignments'
+              ? { ...setting, value: assignments }
+              : setting
+          );
+        } else {
+          // Add the new setting
+          return [...prevSettings, {
+            key: 'locationAssignments',
+            value: assignments,
+            description: "Location to counselor mapping for automatic assignment"
+          }];
+        }
+      });
+
+      setSuccess(`Location assignments updated successfully`);
+      setShowLocationModal(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      console.error(`Error updating location assignments:`, err);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -361,6 +510,51 @@ const SettingsPage = () => {
             </div>
           </div>
         );
+      case 'locationBasedAssignment':
+        return (
+          <div className={styles.settingItem} key={setting.key}>
+            <div className={styles.settingInfo}>
+              <h3 className={styles.settingTitle}>Location-based Lead Assignment</h3>
+              <p className={styles.settingDescription}>
+                When enabled, leads will be automatically assigned to counselors based on their location
+              </p>
+              {setting.value ? (
+                <div className={styles.settingStatus}>
+                  <FaCheck className={styles.statusIconActive} />
+                  <span className={styles.statusTextActive}>Enabled</span>
+                </div>
+              ) : (
+                <div className={styles.settingStatus}>
+                  <FaTimes className={styles.statusIconInactive} />
+                  <span className={styles.statusTextInactive}>Disabled</span>
+                </div>
+              )}
+              {setting.value && (
+                <div className={styles.additionalControls}>
+                  <button
+                    onClick={() => setShowLocationModal(true)}
+                    className={styles.configButton}
+                  >
+                    <FaMapMarkerAlt /> Configure Location Assignments
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className={styles.settingAction}>
+              <button
+                onClick={() => toggleSetting(setting.key)}
+                className={styles.toggleButton}
+                disabled={saving}
+              >
+                {setting.value ? (
+                  <FaToggleOn className={styles.toggleIconOn} />
+                ) : (
+                  <FaToggleOff className={styles.toggleIconOff} />
+                )}
+              </button>
+            </div>
+          </div>
+        );
       case 'maxLeadsToDisplay':
         return (
           <div className={styles.settingItem} key={setting.key}>
@@ -371,7 +565,7 @@ const SettingsPage = () => {
               </p>
               <div className={styles.settingStatus}>
                 <span className={styles.statusTextActive}>
-                  {setting.value === 0 ? 'All Leads' : `Latest ${setting.value} Leads`}
+                  {sliderValue === 0 ? 'All Leads' : `Latest ${sliderValue} Leads`}
                 </span>
               </div>
               <div className={styles.sliderContainer}>
@@ -381,8 +575,10 @@ const SettingsPage = () => {
                     min="0"
                     max={totalLeads > 0 ? totalLeads : 300}
                     step="1"
-                    value={setting.value}
-                    onChange={(e) => updateSetting(setting.key, parseInt(e.target.value))}
+                    value={sliderValue}
+                    onChange={(e) => setSliderValue(parseInt(e.target.value))}
+                    onMouseUp={() => updateSetting(setting.key, sliderValue)}
+                    onTouchEnd={() => updateSetting(setting.key, sliderValue)}
                     className={styles.slider}
                     disabled={saving}
                   />
@@ -390,11 +586,13 @@ const SettingsPage = () => {
                     type="number"
                     min="0"
                     max={totalLeads > 0 ? totalLeads : 300}
-                    value={setting.value}
+                    value={sliderValue}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseInt(e.target.value);
-                      updateSetting(setting.key, Math.min(value, totalLeads > 0 ? totalLeads : 300));
+                      const clamped = Math.min(value, totalLeads > 0 ? totalLeads : 300);
+                      setSliderValue(clamped);
                     }}
+                    onBlur={() => updateSetting(setting.key, sliderValue)}
                     className={styles.numberInput}
                     disabled={saving}
                   />
@@ -477,6 +675,16 @@ const SettingsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Location Assignment Modal */}
+      <LocationAssignmentModal
+        show={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        onSave={handleSaveLocationAssignments}
+        admins={admins}
+        existingAssignments={locationAssignments}
+        saving={saving}
+      />
     </SuperAdminLayout>
   );
 };
