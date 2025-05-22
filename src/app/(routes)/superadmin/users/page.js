@@ -18,6 +18,7 @@ import {
   FaClipboardList,
   FaHistory,
   FaSignOutAlt,
+  FaCog,
 } from "react-icons/fa";
 import Link from "next/link";
 

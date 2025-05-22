@@ -18,6 +18,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaEye,
+  FaCog,
 } from "react-icons/fa";
 import Link from "next/link";
 import AuditLogDetailsModal from "@/components/superadmin/AuditLogDetailsModal";
@@ -390,9 +391,19 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      setLogs(data.logs || []);
-      setTotalItems(data.totalItems || 0);
-      setTotalPages(data.totalPages || 1);
+
+      // Check if we got valid data back
+      if (Array.isArray(data.logs)) {
+        setLogs(data.logs);
+        setTotalItems(data.totalItems || 0);
+        setTotalPages(data.totalPages || 1);
+
+        // Clear error if we had one before but now succeeded
+        setError(null);
+      } else {
+        // Handle case where response is ok but data is malformed
+        throw new Error("Invalid response format from server");
+      }
     } catch (err) {
       setError(err.message);
       setLogs([]);
@@ -424,9 +435,19 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      setLogs(data.logs || []);
-      setTotalItems(data.totalItems || 0);
-      setTotalPages(data.totalPages || 1);
+
+      // Check if we got valid data back
+      if (Array.isArray(data.logs)) {
+        setLogs(data.logs);
+        setTotalItems(data.totalItems || 0);
+        setTotalPages(data.totalPages || 1);
+
+        // Clear error if we had one before but now succeeded
+        setError(null);
+      } else {
+        // Handle case where response is ok but data is malformed
+        throw new Error("Invalid response format from server");
+      }
     } catch (err) {
       setError(err.message);
       setLogs([]);
@@ -767,7 +788,9 @@ const AuditLogsPage = () => {
                               color: "#e53e3e",
                             }}
                           >
-                            No audit logs found
+                            {Object.values(filters).some(value => value !== "") ?
+                              "No audit logs found matching your filter criteria. Try adjusting your filters." :
+                              "No audit logs found"}
                           </td>
                         </tr>
                       )}
@@ -846,7 +869,9 @@ const AuditLogsPage = () => {
                               color: "#e53e3e",
                             }}
                           >
-                            No login history found
+                            {Object.values(filters).some(value => value !== "") ?
+                              "No login history found matching your filter criteria. Try adjusting your filters." :
+                              "No login history found"}
                           </td>
                         </tr>
                       )}

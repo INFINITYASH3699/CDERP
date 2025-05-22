@@ -12,6 +12,7 @@ import {
   FaTachometerAlt,
   FaKey,
   FaCalendarAlt,
+  FaCog,
   FaSpinner,
   FaUserTag,
   FaMapMarkerAlt,

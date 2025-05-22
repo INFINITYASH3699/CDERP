@@ -22,6 +22,7 @@ import {
   FaSquare,
   FaUserEdit,
   FaSync,
+  FaCog,
 } from "react-icons/fa";
 import Link from "next/link";
 

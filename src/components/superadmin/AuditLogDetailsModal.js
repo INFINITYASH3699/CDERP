@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import styles from "@/styles/superadmin/AuditLogDetailsModal.module.css";
-import { FaTimes, FaArrowRight, FaCog, FaUser, FaEnvelope, FaPhone, FaIdCard, FaCalendarAlt, FaClipboardList, FaMapMarkerAlt, FaComments, FaCheck, FaTimes as FaTimesCircle } from 'react-icons/fa';
+import { FaTimes, FaArrowRight, FaCog, FaUser, FaEnvelope, FaPhone, FaIdCard, FaCalendarAlt, FaClipboardList, FaMapMarkerAlt, FaComments, FaCheck, FaTimes as FaTimesCircle, FaUserShield } from 'react-icons/fa';
 
 const AuditLogDetailsModal = ({ log, onClose }) => {
   const modalRef = useRef(null);
@@ -312,6 +312,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
   const isDeleteLeadAction = log.action === 'delete_lead';
   const isUpdateSettingAction = log.action === 'update_setting';
   const isLoginAction = log.action === 'login' || log.userAgent;
+  const isDeleteAdminAction = log.action === 'delete_admin';
 
   return (
     <div className={styles.modalOverlay}>
@@ -321,6 +322,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
             {isUpdateLeadAction ? 'Lead Update Details' :
              isCreateLeadAction ? 'Lead Creation Details' :
              isDeleteLeadAction ? 'Lead Deletion Details' :
+             isDeleteAdminAction ? 'Admin Deletion Details' :
              isUpdateSettingAction ? 'Setting Update Details' :
              isLoginAction ? 'Login Details' : 'Audit Log Details'}
           </h2>
@@ -448,8 +450,95 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                   </div>
                 )}
 
+                {/* Special handling for Admin Deletion */}
+                {isDeleteAdminAction && log.metadata && (
+                  <div className={styles.updateFields}>
+                    <h4>Deleted Admin Information</h4>
+                    <div className={styles.updateFieldsContainer}>
+                      {log.metadata.username && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaUser className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Username</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {log.metadata.username}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {log.metadata.email && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaEnvelope className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Email</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {log.metadata.email}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {log.metadata.role && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaUserShield className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Role</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {log.metadata.role}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {log.metadata.location && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaMapMarkerAlt className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Location</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {log.metadata.location}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {log.metadata.deletedAt && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaCalendarAlt className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Deleted At</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {formatDate(log.metadata.deletedAt)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {log.metadata.adminId && (
+                        <div className={styles.fieldChange}>
+                          <div className={styles.fieldNameWithIcon}>
+                            <FaIdCard className={styles.fieldIcon} />
+                            <h5 className={styles.fieldName}>Admin ID</h5>
+                          </div>
+                          <div className={styles.singleValueDisplay}>
+                            <span className={styles.valueContent}>
+                              {log.metadata.adminId}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Raw metadata if no structured fields are found and not a specific action type */}
-                {!log.metadata.userId && !log.metadata.updateFields && !isUpdateSettingAction && (
+                {!log.metadata.userId && !log.metadata.updateFields && !isUpdateSettingAction && !isDeleteAdminAction && (
                   <div className={styles.updateFields}>
                     <h4>Additional Information</h4>
                     {Object.entries(log.metadata).length === 0 ? (
