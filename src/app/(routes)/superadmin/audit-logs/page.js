@@ -351,15 +351,19 @@ const AuditLogsPage = () => {
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const adminsResponse = await fetchWithAuth(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/admins`
-        );
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+        const url = `${apiUrl}/api/admins`;
+        console.log("Fetching admin users from:", url);
+
+        const adminsResponse = await fetchWithAuth(url);
+
         if (adminsResponse.ok) {
           const adminsData = await adminsResponse.json();
+          console.log(`Fetched ${adminsData.length} admin users`);
           setAdmins(adminsData);
         }
       } catch (err) {
-        // ignore
+        console.error("Error fetching admin users:", err);
       }
     };
     fetchAdmins();
@@ -370,7 +374,13 @@ const AuditLogsPage = () => {
     setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filterObj.adminId) queryParams.append("adminId", filterObj.adminId);
+
+      // Fix for adminId parameter - use performedBy instead
+      if (filterObj.adminId) {
+        queryParams.append("performedBy", filterObj.adminId);
+        console.log("Filtering by performedBy:", filterObj.adminId);
+      }
+
       if (filterObj.action) queryParams.append("action", filterObj.action);
       if (filterObj.startDate)
         queryParams.append("startDate", filterObj.startDate);
@@ -382,15 +392,19 @@ const AuditLogsPage = () => {
       queryParams.append("page", page);
       queryParams.append("limit", logsPerPage);
 
-      const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/audit-logs?${queryParams.toString()}`
-      );
+      // Debug the URL being fetched
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+      const url = `${apiUrl}/api/audit-logs?${queryParams.toString()}`;
+      console.log("Fetching audit logs from:", url);
+
+      const response = await fetchWithAuth(url);
 
       if (!response.ok) {
         throw new Error("Failed to fetch audit logs");
       }
 
       const data = await response.json();
+      console.log("Received audit logs:", data);
 
       // Check if we got valid data back
       if (Array.isArray(data.logs)) {
@@ -419,22 +433,32 @@ const AuditLogsPage = () => {
     setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filterObj.adminId) queryParams.append("adminId", filterObj.adminId);
+
+      // Fix for adminId parameter - use userId instead for login history
+      if (filterObj.adminId) {
+        queryParams.append("userId", filterObj.adminId);
+        console.log("Filtering login history by userId:", filterObj.adminId);
+      }
+
       if (filterObj.startDate)
         queryParams.append("startDate", filterObj.startDate);
       if (filterObj.endDate) queryParams.append("endDate", filterObj.endDate);
       queryParams.append("page", page);
       queryParams.append("limit", logsPerPage);
 
-      const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/login-history?${queryParams.toString()}`
-      );
+      // Debug the URL being fetched
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+      const url = `${apiUrl}/api/login-history?${queryParams.toString()}`;
+      console.log("Fetching login history from:", url);
+
+      const response = await fetchWithAuth(url);
 
       if (!response.ok) {
         throw new Error("Failed to fetch login history");
       }
 
       const data = await response.json();
+      console.log("Received login history:", data);
 
       // Check if we got valid data back
       if (Array.isArray(data.logs)) {
@@ -633,7 +657,8 @@ const AuditLogsPage = () => {
           <div className={styles.formGrid} style={{ marginBottom: "1.5rem" }}>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>
-                <FaUserCog style={{ marginRight: "0.5rem" }} /> Admin User
+                <FaUserCog style={{ marginRight: "0.5rem" }} />
+                {activeTab === "audit" ? "Admin User (performedBy)" : "Admin User (userId)"}
               </label>
               <select
                 name="adminId"
