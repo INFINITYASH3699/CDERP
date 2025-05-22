@@ -172,6 +172,7 @@ const SettingsPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [totalLeads, setTotalLeads] = useState(0);
   const router = useRouter();
 
   // Authentication check
@@ -191,6 +192,7 @@ const SettingsPage = () => {
     }
 
     fetchSettings();
+    fetchLeadCount();
   }, [router]);
 
   const fetchSettings = async () => {
@@ -212,6 +214,25 @@ const SettingsPage = () => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLeadCount = async () => {
+    try {
+      const response = await fetchWithAuth(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/count`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch lead count");
+      }
+
+      const data = await response.json();
+      setTotalLeads(data.count);
+    } catch (err) {
+      console.error("Error fetching lead count:", err);
+      // Default to 300 if we can't get the count
+      setTotalLeads(300);
     }
   };
 
@@ -302,6 +323,90 @@ const SettingsPage = () => {
                   <FaToggleOff className={styles.toggleIconOff} />
                 )}
               </button>
+            </div>
+          </div>
+        );
+      case 'restrictCounselorView':
+        return (
+          <div className={styles.settingItem} key={setting.key}>
+            <div className={styles.settingInfo}>
+              <h3 className={styles.settingTitle}>Restrict Counselor View</h3>
+              <p className={styles.settingDescription}>
+                When enabled, counselors can only see leads assigned to them
+              </p>
+              {setting.value ? (
+                <div className={styles.settingStatus}>
+                  <FaCheck className={styles.statusIconActive} />
+                  <span className={styles.statusTextActive}>Enabled</span>
+                </div>
+              ) : (
+                <div className={styles.settingStatus}>
+                  <FaTimes className={styles.statusIconInactive} />
+                  <span className={styles.statusTextInactive}>Disabled</span>
+                </div>
+              )}
+            </div>
+            <div className={styles.settingAction}>
+              <button
+                onClick={() => toggleSetting(setting.key)}
+                className={styles.toggleButton}
+                disabled={saving}
+              >
+                {setting.value ? (
+                  <FaToggleOn className={styles.toggleIconOn} />
+                ) : (
+                  <FaToggleOff className={styles.toggleIconOff} />
+                )}
+              </button>
+            </div>
+          </div>
+        );
+      case 'maxLeadsToDisplay':
+        return (
+          <div className={styles.settingItem} key={setting.key}>
+            <div className={styles.settingInfo}>
+              <h3 className={styles.settingTitle}>Maximum Leads to Display</h3>
+              <p className={styles.settingDescription}>
+                Set the maximum number of leads to display on the dashboard (0 shows all leads)
+              </p>
+              <div className={styles.settingStatus}>
+                <span className={styles.statusTextActive}>
+                  {setting.value === 0 ? 'All Leads' : `Latest ${setting.value} Leads`}
+                </span>
+              </div>
+              <div className={styles.sliderContainer}>
+                <div className={styles.sliderWithInput}>
+                  <input
+                    type="range"
+                    min="0"
+                    max={totalLeads > 0 ? totalLeads : 300}
+                    step="1"
+                    value={setting.value}
+                    onChange={(e) => updateSetting(setting.key, parseInt(e.target.value))}
+                    className={styles.slider}
+                    disabled={saving}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max={totalLeads > 0 ? totalLeads : 300}
+                    value={setting.value}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+                      updateSetting(setting.key, Math.min(value, totalLeads > 0 ? totalLeads : 300));
+                    }}
+                    className={styles.numberInput}
+                    disabled={saving}
+                  />
+                </div>
+                <div className={styles.sliderLabels}>
+                  <span></span>
+                  <span>{totalLeads > 0 ? totalLeads : 300}</span>
+                </div>
+              </div>
+            </div>
+            <div className={styles.settingAction}>
+              {/* This empty div keeps the layout consistent with other setting items */}
             </div>
           </div>
         );
