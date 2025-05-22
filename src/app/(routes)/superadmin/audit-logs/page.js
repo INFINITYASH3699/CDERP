@@ -96,28 +96,19 @@ const SuperAdminLayout = ({ children, activePage }) => {
           <nav>
             <ul className={styles.sidebarNav}>
               <li>
-                <Link
-                  href="/superadmin"
-                  className={styles.sidebarLink}
-                >
+                <Link href="/superadmin" className={styles.sidebarLink}>
                   <FaTachometerAlt className={styles.sidebarIcon} />
                   Dashboard
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/superadmin/users"
-                  className={styles.sidebarLink}
-                >
+                <Link href="/superadmin/users" className={styles.sidebarLink}>
                   <FaUserCog className={styles.sidebarIcon} />
                   User Management
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/superadmin/leads"
-                  className={styles.sidebarLink}
-                >
+                <Link href="/superadmin/leads" className={styles.sidebarLink}>
                   <FaUsers className={styles.sidebarIcon} />
                   Lead Management
                 </Link>
@@ -141,25 +132,20 @@ const SuperAdminLayout = ({ children, activePage }) => {
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/superadmin/roles"
-                  className={styles.sidebarLink}
-                >
+                <Link href="/superadmin/roles" className={styles.sidebarLink}>
                   <FaKey className={styles.sidebarIcon} />
                   Role Permissions
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/dashboard"
-                  className={styles.sidebarLink}
-                >
+                <Link href="/dashboard" className={styles.sidebarLink}>
                   <FaClipboardList className={styles.sidebarIcon} />
                   Go to Dashboard
                 </Link>
               </li>
               <li>
-                <a href="#"
+                <a
+                  href="#"
                   onClick={handleLogout}
                   className={styles.sidebarLink}
                 >
@@ -171,20 +157,28 @@ const SuperAdminLayout = ({ children, activePage }) => {
           </nav>
         </aside>
         <main className={styles.mainContent}>
-          <div style={{
-            padding: "2rem",
-            textAlign: "center",
-            backgroundColor: "#fff5f5",
-            borderRadius: "8px",
-            border: "1px solid #fc8181",
-            margin: "2rem auto",
-            maxWidth: "800px"
-          }}>
-            <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+          <div
+            style={{
+              padding: "2rem",
+              textAlign: "center",
+              backgroundColor: "#fff5f5",
+              borderRadius: "8px",
+              border: "1px solid #fc8181",
+              margin: "2rem auto",
+              maxWidth: "800px",
+            }}
+          >
+            <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>
+              Access Restricted
+            </h2>
             <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-              You do not have access to the Audit Logs section. Please contact a SuperAdmin for assistance.
+              You do not have access to the Audit Logs section. Please contact a
+              SuperAdmin for assistance.
             </p>
-            <p>Your current role permissions do not allow access to this functionality.</p>
+            <p>
+              Your current role permissions do not allow access to this
+              functionality.
+            </p>
           </div>
         </main>
       </div>
@@ -202,7 +196,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin"
-                className={`${styles.sidebarLink} ${activePage === 'dashboard' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "dashboard" ? styles.activeLink : ""}`}
               >
                 <FaTachometerAlt className={styles.sidebarIcon} />
                 Dashboard
@@ -211,7 +205,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin/users"
-                className={`${styles.sidebarLink} ${activePage === 'users' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "users" ? styles.activeLink : ""}`}
               >
                 <FaUserCog className={styles.sidebarIcon} />
                 User Management
@@ -220,7 +214,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin/leads"
-                className={`${styles.sidebarLink} ${activePage === 'leads' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "leads" ? styles.activeLink : ""}`}
               >
                 <FaUsers className={styles.sidebarIcon} />
                 Lead Management
@@ -229,7 +223,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin/analytics"
-                className={`${styles.sidebarLink} ${activePage === 'analytics' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "analytics" ? styles.activeLink : ""}`}
               >
                 <FaChartBar className={styles.sidebarIcon} />
                 Analytics
@@ -238,7 +232,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin/audit-logs"
-                className={`${styles.sidebarLink} ${activePage === 'audit-logs' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "audit-logs" ? styles.activeLink : ""}`}
               >
                 <FaHistory className={styles.sidebarIcon} />
                 Audit Logs
@@ -247,7 +241,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
             <li>
               <Link
                 href="/superadmin/roles"
-                className={`${styles.sidebarLink} ${activePage === 'roles' ? styles.activeLink : ''}`}
+                className={`${styles.sidebarLink} ${activePage === "roles" ? styles.activeLink : ""}`}
               >
                 <FaKey className={styles.sidebarIcon} />
                 Role Permissions
@@ -255,18 +249,21 @@ const SuperAdminLayout = ({ children, activePage }) => {
             </li>
             <li>
               <Link
-                href="/dashboard"
-                className={styles.sidebarLink}
+                href="/superadmin/settings"
+                className={`${styles.sidebarLink} ${activePage === "settings" ? styles.activeLink : ""}`}
               >
+                <FaCog className={styles.sidebarIcon} />
+                Settings
+              </Link>
+            </li>
+            <li>
+              <Link href="/dashboard" className={styles.sidebarLink}>
                 <FaClipboardList className={styles.sidebarIcon} />
                 Go to Dashboard
               </Link>
             </li>
             <li>
-              <a href="#"
-                onClick={handleLogout}
-                className={styles.sidebarLink}
-              >
+              <a href="#" onClick={handleLogout} className={styles.sidebarLink}>
                 <FaSignOutAlt className={styles.sidebarIcon} />
                 Logout
               </a>
@@ -274,9 +271,7 @@ const SuperAdminLayout = ({ children, activePage }) => {
           </ul>
         </nav>
       </aside>
-      <main className={styles.mainContent}>
-        {children}
-      </main>
+      <main className={styles.mainContent}>{children}</main>
     </div>
   );
 };
@@ -284,13 +279,13 @@ const SuperAdminLayout = ({ children, activePage }) => {
 // Format date with time
 const formatDateTime = (dateString) => {
   const date = new Date(dateString);
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   });
 };
 
@@ -374,16 +369,17 @@ const AuditLogsPage = () => {
     setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filterObj.adminId) queryParams.append('adminId', filterObj.adminId);
-      if (filterObj.action) queryParams.append('action', filterObj.action);
-      if (filterObj.startDate) queryParams.append('startDate', filterObj.startDate);
-      if (filterObj.endDate) queryParams.append('endDate', filterObj.endDate);
+      if (filterObj.adminId) queryParams.append("adminId", filterObj.adminId);
+      if (filterObj.action) queryParams.append("action", filterObj.action);
+      if (filterObj.startDate)
+        queryParams.append("startDate", filterObj.startDate);
+      if (filterObj.endDate) queryParams.append("endDate", filterObj.endDate);
 
       // Always exclude login actions from audit logs tab
-      queryParams.append('excludeActions', 'login');
+      queryParams.append("excludeActions", "login");
 
-      queryParams.append('page', page);
-      queryParams.append('limit', logsPerPage);
+      queryParams.append("page", page);
+      queryParams.append("limit", logsPerPage);
 
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/audit-logs?${queryParams.toString()}`
@@ -412,11 +408,12 @@ const AuditLogsPage = () => {
     setError(null);
     try {
       const queryParams = new URLSearchParams();
-      if (filterObj.adminId) queryParams.append('adminId', filterObj.adminId);
-      if (filterObj.startDate) queryParams.append('startDate', filterObj.startDate);
-      if (filterObj.endDate) queryParams.append('endDate', filterObj.endDate);
-      queryParams.append('page', page);
-      queryParams.append('limit', logsPerPage);
+      if (filterObj.adminId) queryParams.append("adminId", filterObj.adminId);
+      if (filterObj.startDate)
+        queryParams.append("startDate", filterObj.startDate);
+      if (filterObj.endDate) queryParams.append("endDate", filterObj.endDate);
+      queryParams.append("page", page);
+      queryParams.append("limit", logsPerPage);
 
       const response = await fetchWithAuth(
         `${process.env.NEXT_PUBLIC_API_URL}/api/login-history?${queryParams.toString()}`
@@ -544,20 +541,28 @@ const AuditLogsPage = () => {
   if (userRole === "Admin") {
     return (
       <SuperAdminLayout activePage="audit-logs">
-        <div style={{
-          padding: "2rem",
-          textAlign: "center",
-          backgroundColor: "#fff5f5",
-          borderRadius: "8px",
-          border: "1px solid #fc8181",
-          margin: "2rem auto",
-          maxWidth: "800px"
-        }}>
-          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
+        <div
+          style={{
+            padding: "2rem",
+            textAlign: "center",
+            backgroundColor: "#fff5f5",
+            borderRadius: "8px",
+            border: "1px solid #fc8181",
+            margin: "2rem auto",
+            maxWidth: "800px",
+          }}
+        >
+          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>
+            Access Restricted
+          </h2>
           <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-            You do not have access to the Audit Logs section. Please contact a SuperAdmin for assistance.
+            You do not have access to the Audit Logs section. Please contact a
+            SuperAdmin for assistance.
           </p>
-          <p>Your current role permissions do not allow access to this functionality.</p>
+          <p>
+            Your current role permissions do not allow access to this
+            functionality.
+          </p>
         </div>
       </SuperAdminLayout>
     );
@@ -573,14 +578,16 @@ const AuditLogsPage = () => {
       </div>
 
       {error && (
-        <div style={{
-          padding: "1rem",
-          backgroundColor: "#fff5f5",
-          borderRadius: "8px",
-          border: "1px solid #fc8181",
-          margin: "1rem 0",
-          color: "#e53e3e"
-        }}>
+        <div
+          style={{
+            padding: "1rem",
+            backgroundColor: "#fff5f5",
+            borderRadius: "8px",
+            border: "1px solid #fc8181",
+            margin: "1rem 0",
+            color: "#e53e3e",
+          }}
+        >
           {error}
         </div>
       )}
@@ -588,14 +595,14 @@ const AuditLogsPage = () => {
       <div className={styles.tabsContainer}>
         <div className={styles.tabsList}>
           <button
-            className={`${styles.tabButton} ${activeTab === 'audit' ? styles.activeTab : ''}`}
-            onClick={() => changeTab('audit')}
+            className={`${styles.tabButton} ${activeTab === "audit" ? styles.activeTab : ""}`}
+            onClick={() => changeTab("audit")}
           >
             <FaHistory style={{ marginRight: "0.5rem" }} /> Audit Logs
           </button>
           <button
-            className={`${styles.tabButton} ${activeTab === 'login' ? styles.activeTab : ''}`}
-            onClick={() => changeTab('login')}
+            className={`${styles.tabButton} ${activeTab === "login" ? styles.activeTab : ""}`}
+            onClick={() => changeTab("login")}
           >
             <FaUserShield style={{ marginRight: "0.5rem" }} /> Login History
           </button>
@@ -647,7 +654,8 @@ const AuditLogsPage = () => {
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>
-                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range (Start)
+                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range
+                (Start)
               </label>
               <input
                 type="date"
@@ -660,7 +668,8 @@ const AuditLogsPage = () => {
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>
-                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range (End)
+                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range
+                (End)
               </label>
               <input
                 type="date"
@@ -671,7 +680,10 @@ const AuditLogsPage = () => {
               />
             </div>
 
-            <div className={styles.formActions} style={{ alignSelf: "flex-end" }}>
+            <div
+              className={styles.formActions}
+              style={{ alignSelf: "flex-end" }}
+            >
               <button
                 className={`${styles.button} ${styles.secondaryButton}`}
                 onClick={resetFilters}
@@ -711,19 +723,22 @@ const AuditLogsPage = () => {
                               {log.adminId?.username || "Unknown"}
                             </td>
                             <td data-label="Role">
-                              <span className={`${styles.roleBadge} ${
-                                log.adminId?.role === "SuperAdmin" ? styles.superAdminBadge :
-                                log.adminId?.role === "Admin" ? styles.adminBadge :
-                                log.adminId?.role === "ViewMode" ? styles.viewModeBadge :
-                                styles.editModeBadge
-                              }`}>
+                              <span
+                                className={`${styles.roleBadge} ${
+                                  log.adminId?.role === "SuperAdmin"
+                                    ? styles.superAdminBadge
+                                    : log.adminId?.role === "Admin"
+                                      ? styles.adminBadge
+                                      : log.adminId?.role === "ViewMode"
+                                        ? styles.viewModeBadge
+                                        : styles.editModeBadge
+                                }`}
+                              >
                                 {log.adminId?.role || "Unknown"}
                               </span>
                             </td>
                             <td data-label="Action">
-                              <span className={styles.badge}>
-                                {log.action}
-                              </span>
+                              <span className={styles.badge}>{log.action}</span>
                             </td>
                             <td data-label="Target">{log.target}</td>
                             <td data-label="Details">
@@ -732,7 +747,8 @@ const AuditLogsPage = () => {
                                   onClick={() => openLogModal(log)}
                                   className={styles.viewDetailsBtn}
                                 >
-                                  <FaEye className={styles.viewIcon} /> View Details
+                                  <FaEye className={styles.viewIcon} /> View
+                                  Details
                                 </button>
                               )}
                             </td>
@@ -743,7 +759,14 @@ const AuditLogsPage = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" style={{ textAlign: "center", padding: "1.5rem", color: "#e53e3e" }}>
+                          <td
+                            colSpan="6"
+                            style={{
+                              textAlign: "center",
+                              padding: "1.5rem",
+                              color: "#e53e3e",
+                            }}
+                          >
                             No audit logs found
                           </td>
                         </tr>
@@ -777,17 +800,24 @@ const AuditLogsPage = () => {
                               {log.adminId?.username || "Unknown"}
                             </td>
                             <td data-label="Role">
-                              <span className={`${styles.roleBadge} ${
-                                log.adminId?.role === "SuperAdmin" ? styles.superAdminBadge :
-                                log.adminId?.role === "Admin" ? styles.adminBadge :
-                                log.adminId?.role === "ViewMode" ? styles.viewModeBadge :
-                                styles.editModeBadge
-                              }`}>
+                              <span
+                                className={`${styles.roleBadge} ${
+                                  log.adminId?.role === "SuperAdmin"
+                                    ? styles.superAdminBadge
+                                    : log.adminId?.role === "Admin"
+                                      ? styles.adminBadge
+                                      : log.adminId?.role === "ViewMode"
+                                        ? styles.viewModeBadge
+                                        : styles.editModeBadge
+                                }`}
+                              >
                                 {log.adminId?.role || "Unknown"}
                               </span>
                             </td>
                             <td data-label="Status">
-                              <span className={`${styles.badge} ${log.success ? styles.badgeGreen : styles.badgeRed}`}>
+                              <span
+                                className={`${styles.badge} ${log.success ? styles.badgeGreen : styles.badgeRed}`}
+                              >
                                 {log.success ? "Success" : "Failed"}
                               </span>
                             </td>
@@ -797,7 +827,8 @@ const AuditLogsPage = () => {
                                 onClick={() => openLogModal(log)}
                                 className={styles.viewDetailsBtn}
                               >
-                                <FaEye className={styles.viewIcon} /> View Details
+                                <FaEye className={styles.viewIcon} /> View
+                                Details
                               </button>
                             </td>
                             <td data-label="Login Time">
@@ -807,7 +838,14 @@ const AuditLogsPage = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="6" style={{ textAlign: "center", padding: "1.5rem", color: "#e53e3e" }}>
+                          <td
+                            colSpan="6"
+                            style={{
+                              textAlign: "center",
+                              padding: "1.5rem",
+                              color: "#e53e3e",
+                            }}
+                          >
                             No login history found
                           </td>
                         </tr>
@@ -844,10 +882,7 @@ const AuditLogsPage = () => {
 
       {/* Modal for displaying details */}
       {selectedLog && (
-        <AuditLogDetailsModal
-          log={selectedLog}
-          onClose={closeLogModal}
-        />
+        <AuditLogDetailsModal log={selectedLog} onClose={closeLogModal} />
       )}
     </SuperAdminLayout>
   );
