@@ -328,6 +328,49 @@
   font-weight: 600;
 }
 
+/* User Reference display styles */
+.userReferenceValue {
+  background-color: #edf7ff;
+  border: 1px solid #cde0f7;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 4px 0;
+}
+
+.userPropertyExpanded {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.userHeading {
+  margin: 0 0 6px 0;
+  color: #2c5282;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #cde0f7;
+  padding-bottom: 4px;
+}
+
+.userProperty {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.adminNote {
+  font-size: 0.8rem;
+  color: #4a5568;
+  background-color: #f8fafc;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border-left: 3px solid #90cdf4;
+  margin-top: 4px;
+}
+
+.adminNote em, .adminNote strong {
+  color: #2c5282;
+}
+
 /* Object and array display styles */
 .objectValue, .arrayValue {
   display: flex;

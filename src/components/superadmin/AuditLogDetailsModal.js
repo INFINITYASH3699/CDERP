@@ -116,14 +116,14 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 </div>
                 <div className={styles.singleValueDisplay}>
                   <span className={styles.valueContent}>
-                    {typeof values === 'object'
+                    {typeof values === 'object' && values !== null
                       ? Object.entries(values).map(([k, v]) => (
                           <div key={k} className={styles.nestedValue}>
                             <span className={styles.nestedKey}>{formatFieldName(k)}:</span>
-                            <span className={styles.nestedValueContent}>{renderSimpleValue(v)}</span>
+                            <span className={styles.nestedValueContent}>{renderSimpleValue(v, k)}</span>
                           </div>
                         ))
-                      : renderSimpleValue(values)
+                      : renderSimpleValue(values, field)
                     }
                   </span>
                 </div>
@@ -144,7 +144,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 <div className={styles.oldValue}>
                   <span className={styles.valueLabel}>Previous:</span>
                   <span className={styles.valueContent}>
-                    {renderSimpleValue(values.oldValue)}
+                    {renderSimpleValue(values.oldValue, field)}
                   </span>
                 </div>
                 <div className={styles.changeArrow}>
@@ -153,7 +153,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 <div className={styles.newValue}>
                   <span className={styles.valueLabel}>Updated:</span>
                   <span className={styles.valueContent}>
-                    {renderSimpleValue(values.newValue)}
+                    {renderSimpleValue(values.newValue, field)}
                   </span>
                 </div>
               </div>
@@ -186,7 +186,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
               </div>
               <div className={styles.singleValueDisplay}>
                 <span className={styles.valueContent}>
-                  {renderSimpleValue(value)}
+                  {renderSimpleValue(value, key)}
                 </span>
               </div>
             </div>
@@ -211,7 +211,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
             <div className={styles.oldValue}>
               <span className={styles.valueLabel}>Previous Value:</span>
               <span className={styles.valueContent}>
-                {renderSimpleValue(metadata.oldValue)}
+                {renderSimpleValue(metadata.oldValue, 'settingName')}
               </span>
             </div>
             <div className={styles.changeArrow}>
@@ -220,7 +220,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
             <div className={styles.newValue}>
               <span className={styles.valueLabel}>New Value:</span>
               <span className={styles.valueContent}>
-                {renderSimpleValue(metadata.newValue)}
+                {renderSimpleValue(metadata.newValue, 'settingName')}
               </span>
             </div>
           </div>
@@ -246,7 +246,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
   };
 
   // Render simple value (string, number, boolean, etc.) in a user-friendly way
-  const renderSimpleValue = (value) => {
+  const renderSimpleValue = (value, field = '') => {
     if (value === null || value === undefined) {
       return <em className={styles.nullValue}>None</em>;
     }
@@ -270,6 +270,98 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
       }
     }
 
+    // Check if this is a user reference (common field names for user assignments)
+    const isAssignmentField =
+      (field && ['assignedTo', 'assignedUser', 'userId', 'adminId', 'createdBy', 'updatedBy', 'owner', 'user', 'admin']
+        .some(term => field.toLowerCase().includes(term.toLowerCase())));
+
+    // Special handling for user references - CASE 1: Object with properties
+    if (isAssignmentField && typeof value === 'object' && value !== null) {
+      // For objects with _id field, assume it's a user reference
+      if (value._id) {
+        return (
+          <div className={styles.userReferenceValue}>
+            <div>
+              {value.username && (
+                <div className={styles.userProperty}>
+                  <span className={styles.propertyKey}>Username:</span>
+                  <span className={styles.propertyValue}>{value.username}</span>
+                </div>
+              )}
+              {value.name && (
+                <div className={styles.userProperty}>
+                  <span className={styles.propertyKey}>Name:</span>
+                  <span className={styles.propertyValue}>{value.name}</span>
+                </div>
+              )}
+              {value.email && (
+                <div className={styles.userProperty}>
+                  <span className={styles.propertyKey}>Email:</span>
+                  <span className={styles.propertyValue}>{value.email}</span>
+                </div>
+              )}
+              {value.role && (
+                <div className={styles.userProperty}>
+                  <span className={styles.propertyKey}>Role:</span>
+                  <span className={styles.propertyValue}>{value.role}</span>
+                </div>
+              )}
+              <div className={styles.userProperty}>
+                <span className={styles.propertyKey}>ID:</span>
+                <span className={styles.propertyValue}>{value._id}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // CASE 2: Handle string IDs for fields that likely reference users
+    // This handles the scenario where assignedTo just shows an ID string
+    if ((typeof value === 'string') &&
+        (value.length === 24 || value.length === 12) &&
+        /^[0-9a-fA-F]+$/.test(value)) {
+
+      // Special handling for "assignedTo" field in any action, especially update_user
+      if ((field && field.toLowerCase() === 'assignedto') ||
+          (log.action && log.action.toLowerCase().includes('update_user'))) {
+
+        // Try to fetch the user details from the backend
+        // Since we can't do that now, we'll display an enhanced user reference
+
+        return (
+          <div className={styles.userReferenceValue}>
+            <div className={styles.userPropertyExpanded}>
+              <h4 className={styles.userHeading}>User Reference</h4>
+              <div className={styles.userProperty}>
+                <span className={styles.propertyKey}>Full ID:</span>
+                <span className={styles.propertyValue}>{value}</span>
+              </div>
+              <div className={styles.adminNote}>
+                <strong>Note:</strong> This represents a user in the system. Their
+                details would need to be loaded from the database.
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Generic handling for other ObjectId-like strings
+      if (isAssignmentField) {
+        return (
+          <div className={styles.userReferenceValue}>
+            <div className={styles.userProperty}>
+              <span className={styles.propertyKey}>ID:</span>
+              <span className={styles.propertyValue}>{value}</span>
+            </div>
+            <div className={styles.adminNote}>
+              <em>This appears to be a reference to a database object.</em>
+            </div>
+          </div>
+        );
+      }
+    }
+
     // Handle objects and arrays
     if (typeof value === 'object') {
       if (Array.isArray(value)) {
@@ -280,7 +372,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
             {value.map((item, index) => (
               <div key={index} className={styles.arrayItem}>
                 <span className={styles.arrayIndex}>{index + 1}.</span>
-                <span>{renderSimpleValue(item)}</span>
+                <span>{renderSimpleValue(item, `item-${index}`)}</span>
               </div>
             ))}
           </div>
@@ -290,12 +382,12 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
       // For objects
       return (
         <div className={styles.objectValue}>
-          {Object.entries(value).length === 0 ?
+          {value && Object.entries(value).length === 0 ?
             <em className={styles.emptyValue}>Empty Object</em> :
-            Object.entries(value).map(([key, val]) => (
+            value && Object.entries(value).map(([key, val]) => (
               <div key={key} className={styles.objectProperty}>
                 <span className={styles.propertyKey}>{formatFieldName(key)}:</span>
-                <span className={styles.propertyValue}>{renderSimpleValue(val)}</span>
+                <span className={styles.propertyValue}>{renderSimpleValue(val, key)}</span>
               </div>
             ))
           }
@@ -541,7 +633,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 {!log.metadata.userId && !log.metadata.updateFields && !isUpdateSettingAction && !isDeleteAdminAction && (
                   <div className={styles.updateFields}>
                     <h4>Additional Information</h4>
-                    {Object.entries(log.metadata).length === 0 ? (
+                    {!log.metadata || Object.entries(log.metadata).length === 0 ? (
                       <div className={styles.noChangesMessage}>
                         <p>No additional information available</p>
                       </div>
@@ -555,7 +647,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                             </div>
                             <div className={styles.singleValueDisplay}>
                               <span className={styles.valueContent}>
-                                {renderSimpleValue(value)}
+                                {renderSimpleValue(value, key)}
                               </span>
                             </div>
                           </div>
