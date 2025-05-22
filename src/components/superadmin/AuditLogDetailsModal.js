@@ -1,10 +1,12 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "@/styles/superadmin/AuditLogDetailsModal.module.css";
 import { FaTimes, FaArrowRight, FaCog, FaUser, FaEnvelope, FaPhone, FaIdCard, FaCalendarAlt, FaClipboardList, FaMapMarkerAlt, FaComments, FaCheck, FaTimes as FaTimesCircle, FaUserShield } from 'react-icons/fa';
 
 const AuditLogDetailsModal = ({ log, onClose }) => {
   const modalRef = useRef(null);
+  const [userDetails, setUserDetails] = useState({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Close modal when clicking outside
   useEffect(() => {
@@ -37,6 +39,102 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [onClose]);
+
+  // For debugging
+  useEffect(() => {
+    if (log && log.action === 'update_user' && log.metadata) {
+      if (log.metadata.updateFields) {
+
+        // Log assignedTo structure if it exists
+        if (log.metadata.updateFields.assignedTo) {
+        }
+      }
+    }
+  }, [log]);
+
+  // New effect to fetch user details if needed
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      // Early return if log doesn't exist
+      if (!log || !log.metadata) return;
+
+      // Initialize array to store user IDs to fetch
+      const userIds = [];
+
+      try {
+        setLoadingUsers(true);
+
+        // Specific handling for update_user action with assignedTo field
+        if (log.action === 'update_user' && log.metadata.updateFields && log.metadata.updateFields.assignedTo) {
+          const assignedTo = log.metadata.updateFields.assignedTo;
+
+          // Check different possible structures of assignedTo field
+          if (typeof assignedTo === 'string') {
+            // If assignedTo is a direct ID string
+            userIds.push(assignedTo);
+          } else if (assignedTo && typeof assignedTo === 'object') {
+            // If assignedTo has oldValue/newValue
+            if (assignedTo.oldValue && typeof assignedTo.oldValue === 'string') {
+              userIds.push(assignedTo.oldValue);
+            }
+            if (assignedTo.newValue && typeof assignedTo.newValue === 'string') {
+              userIds.push(assignedTo.newValue);
+            }
+          }
+        }
+
+        // If we have IDs to fetch
+        if (userIds.length > 0) {
+
+          const token = localStorage.getItem("adminToken");
+          if (!token) {
+            return;
+          }
+
+          try {
+            const promises = userIds.map(userId =>
+              fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admins/${userId}`, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                }
+              })
+              .then(res => {
+                if (!res.ok) {
+                  return null;
+                }
+                return res.json();
+              })
+              .catch(err => {
+                console.error(`Error fetching user ${userId}:`, err);
+                return null;
+              })
+            );
+
+            const results = await Promise.all(promises);
+
+            // Create a map of user ID to user details
+            const userMap = {};
+            results.forEach(user => {
+              if (user && user._id) {
+                userMap[user._id] = user;
+              }
+            });
+
+            setUserDetails(userMap);
+          } catch (error) {
+            console.error("Error in fetch operation:", error);
+          }
+        } else {
+        }
+      } catch (error) {
+        console.error("General error in fetchUserDetails:", error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUserDetails();
+  }, [log]);
 
   if (!log) return null;
 
@@ -116,14 +214,16 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 </div>
                 <div className={styles.singleValueDisplay}>
                   <span className={styles.valueContent}>
-                    {typeof values === 'object'
-                      ? Object.entries(values).map(([k, v]) => (
-                          <div key={k} className={styles.nestedValue}>
-                            <span className={styles.nestedKey}>{formatFieldName(k)}:</span>
-                            <span className={styles.nestedValueContent}>{renderSimpleValue(v)}</span>
-                          </div>
-                        ))
-                      : renderSimpleValue(values)
+                    {field === "assignedTo" ?
+                      renderUserValue(values) :
+                      typeof values === 'object'
+                        ? Object.entries(values).map(([k, v]) => (
+                            <div key={k} className={styles.nestedValue}>
+                              <span className={styles.nestedKey}>{formatFieldName(k)}:</span>
+                              <span className={styles.nestedValueContent}>{renderSimpleValue(v)}</span>
+                            </div>
+                          ))
+                        : renderSimpleValue(values)
                     }
                   </span>
                 </div>
@@ -144,7 +244,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 <div className={styles.oldValue}>
                   <span className={styles.valueLabel}>Previous:</span>
                   <span className={styles.valueContent}>
-                    {renderSimpleValue(values.oldValue)}
+                    {field === "assignedTo" ? renderUserValue(values.oldValue) : renderSimpleValue(values.oldValue)}
                   </span>
                 </div>
                 <div className={styles.changeArrow}>
@@ -153,7 +253,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 <div className={styles.newValue}>
                   <span className={styles.valueLabel}>Updated:</span>
                   <span className={styles.valueContent}>
-                    {renderSimpleValue(values.newValue)}
+                    {field === "assignedTo" ? renderUserValue(values.newValue) : renderSimpleValue(values.newValue)}
                   </span>
                 </div>
               </div>
@@ -306,6 +406,79 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
     return value.toString();
   };
 
+  // Special handling for user objects (display name, email, role instead of just ID)
+  const renderUserValue = (value) => {
+
+
+    // If value is null or undefined
+    if (value === null || value === undefined) {
+      return <em className={styles.nullValue}>None</em>;
+    }
+
+    // If the value is a complete user object with username, email, and role
+    if (value && typeof value === 'object' && value.username && value.email && value.role) {
+      return (
+        <div className={styles.objectValue}>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Name:</span>
+            <span className={styles.propertyValue}>{value.username}</span>
+          </div>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Email:</span>
+            <span className={styles.propertyValue}>{value.email}</span>
+          </div>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Role:</span>
+            <span className={styles.propertyValue}>{value.role}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // If value is a string (likely an ID) and we have user details for it
+    if (typeof value === 'string' && userDetails[value]) {
+      const user = userDetails[value];
+      return (
+        <div className={styles.objectValue}>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Name:</span>
+            <span className={styles.propertyValue}>{user.username}</span>
+          </div>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Email:</span>
+            <span className={styles.propertyValue}>{user.email}</span>
+          </div>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyKey}>Role:</span>
+            <span className={styles.propertyValue}>{user.role}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // If we're loading user details
+    if (typeof value === 'string' && loadingUsers) {
+      return <em className={styles.loadingValue}>Loading user details...</em>;
+    }
+
+    if (typeof value === 'string' && value.length > 20) {
+      return (
+        <div>
+          <div className={styles.objectProperty}>
+            <span className={styles.propertyValue} style={{color: '#e53e3e'}}>
+              ID: {value}
+              <br/>
+              <small>(User details not available)</small>
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Otherwise use the standard rendering
+    return renderSimpleValue(value);
+  };
+
   // Check action types
   const isUpdateLeadAction = log.action === 'update_lead';
   const isCreateLeadAction = log.action === 'create_lead';
@@ -313,6 +486,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
   const isUpdateSettingAction = log.action === 'update_setting';
   const isLoginAction = log.action === 'login' || log.userAgent;
   const isDeleteAdminAction = log.action === 'delete_admin';
+  const isUpdateUserAction = log.action === 'update_user';
 
   return (
     <div className={styles.modalOverlay}>
@@ -434,6 +608,66 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                   </div>
                 )}
 
+                {/* Enhanced display for update_user action */}
+                {isUpdateUserAction && log.metadata.updateFields && (
+                  <div className={styles.updateFields}>
+                    <h4>User Updates</h4>
+                    <div className={styles.updateFieldsContainer}>
+                      {Object.entries(log.metadata.updateFields).map(([field, values]) => {
+                        const hasOldAndNewValue = values &&
+                                               typeof values === 'object' &&
+                                               'oldValue' in values &&
+                                               'newValue' in values;
+
+                        if (!hasOldAndNewValue) {
+                          return (
+                            <div key={field} className={styles.fieldChange}>
+                              <div className={styles.fieldNameWithIcon}>
+                                {getFieldIcon(field)}
+                                <h5 className={styles.fieldName}>{formatFieldName(field)}</h5>
+                              </div>
+                              <div className={styles.singleValueDisplay}>
+                                <span className={styles.valueContent}>
+                                  {field === "assignedTo" ? renderUserValue(values) : renderSimpleValue(values)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        const changed = hasValueChanged(values.oldValue, values.newValue);
+
+                        return (
+                          <div key={field} className={`${styles.fieldChange} ${changed ? styles.valueChanged : ''}`}>
+                            <div className={styles.fieldNameWithIcon}>
+                              {getFieldIcon(field)}
+                              <h5 className={styles.fieldName}>{formatFieldName(field)}</h5>
+                              {changed && <span className={styles.changedBadge}>Changed</span>}
+                            </div>
+                            <div className={styles.changeValues}>
+                              <div className={styles.oldValue}>
+                                <span className={styles.valueLabel}>Previous:</span>
+                                <span className={styles.valueContent}>
+                                  {field === "assignedTo" ? renderUserValue(values.oldValue) : renderSimpleValue(values.oldValue)}
+                                </span>
+                              </div>
+                              <div className={styles.changeArrow}>
+                                <FaArrowRight />
+                              </div>
+                              <div className={styles.newValue}>
+                                <span className={styles.valueLabel}>Updated:</span>
+                                <span className={styles.valueContent}>
+                                  {field === "assignedTo" ? renderUserValue(values.newValue) : renderSimpleValue(values.newValue)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Enhanced display for update_setting action */}
                 {isUpdateSettingAction && (
                   <div className={styles.updateFields}>
@@ -443,7 +677,7 @@ const AuditLogDetailsModal = ({ log, onClose }) => {
                 )}
 
                 {/* Standard display for other actions with updateFields */}
-                {!isUpdateLeadAction && !isUpdateSettingAction && log.metadata.updateFields && (
+                {!isUpdateLeadAction && !isUpdateUserAction && !isUpdateSettingAction && log.metadata.updateFields && (
                   <div className={styles.updateFields}>
                     <h4>Updated Fields</h4>
                     {renderUpdateFields(log.metadata.updateFields)}
