@@ -1128,3 +1128,27 @@
   max-width: 100%;
   color: #4a5568;
 }
+
+/* View details button in audit logs */
+.viewDetailsBtn {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ebf8ff;
+  color: #3182ce;
+  border: 1px solid #bee3f8;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.viewDetailsBtn:hover {
+  background-color: #3182ce;
+  color: white;
+}
+
+.viewIcon {
+  margin-right: 4px;
+}

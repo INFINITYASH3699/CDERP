@@ -17,8 +17,10 @@ import {
   FaSpinner,
   FaChevronLeft,
   FaChevronRight,
+  FaEye,
 } from "react-icons/fa";
 import Link from "next/link";
+import AuditLogDetailsModal from "@/components/superadmin/AuditLogDetailsModal";
 
 // Authenticated fetch utility
 const fetchWithAuth = async (url, options = {}) => {
@@ -309,6 +311,7 @@ const AuditLogsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [userRole, setUserRole] = useState(null); // To track current user role
+  const [selectedLog, setSelectedLog] = useState(null); // For modal display
   const logsPerPage = 10;
   const router = useRouter();
 
@@ -516,6 +519,16 @@ const AuditLogsPage = () => {
     }
   };
 
+  // New function to open the log details modal
+  const openLogModal = (log) => {
+    setSelectedLog(log);
+  };
+
+  // New function to close the log details modal
+  const closeLogModal = () => {
+    setSelectedLog(null);
+  };
+
   if (loading) {
     return (
       <SuperAdminLayout activePage="audit-logs">
@@ -715,75 +728,12 @@ const AuditLogsPage = () => {
                             <td data-label="Target">{log.target}</td>
                             <td data-label="Details">
                               {log.metadata && (
-                                <details>
-                                  <summary>View Details</summary>
-                                  <div style={{
-                                    whiteSpace: "pre-wrap",
-                                    fontSize: "0.75rem",
-                                    margin: "0.5rem 0",
-                                    padding: "0.5rem",
-                                    backgroundColor: "#f7fafc",
-                                    borderRadius: "0.25rem"
-                                  }}>
-                                    {log.metadata.userId && (
-                                      <div className={styles.auditDetail}>
-                                        <strong>Lead ID:</strong> {log.metadata.userId}
-                                      </div>
-                                    )}
-                                    {log.metadata.leadName && (
-                                      <div className={styles.auditDetail}>
-                                        <strong>Name:</strong> {log.metadata.leadName}
-                                      </div>
-                                    )}
-                                    {log.metadata.leadEmail && (
-                                      <div className={styles.auditDetail}>
-                                        <strong>Email:</strong> {log.metadata.leadEmail}
-                                      </div>
-                                    )}
-                                    {log.metadata.leadContact && (
-                                      <div className={styles.auditDetail}>
-                                        <strong>Contact:</strong> {log.metadata.leadContact}
-                                      </div>
-                                    )}
-                                    {log.metadata && log.metadata.updateFields && (
-                                      <div className={styles.auditDetail}>
-                                        <strong>Updated Fields:</strong>
-                                        <pre style={{
-                                          margin: "8px 0",
-                                          padding: "12px",
-                                          backgroundColor: "#f8f9fa",
-                                          borderRadius: "4px",
-                                          border: "1px solid #eaeaea",
-                                          fontSize: "13px",
-                                          whiteSpace: "pre-wrap",
-                                          wordBreak: "break-word"
-                                        }}>
-                                          {(() => {
-                                            // Extremely safe rendering of updateFields
-                                            const updateFields = log?.metadata?.updateFields;
-                                            if (
-                                              updateFields &&
-                                              typeof updateFields === "object" &&
-                                              !Array.isArray(updateFields)
-                                            ) {
-                                              try {
-                                                return JSON.stringify(updateFields, null, 2);
-                                              } catch (e) {
-                                                return "[Unable to display updateFields]";
-                                              }
-                                            }
-                                            if (updateFields === null) return "null";
-                                            if (updateFields === undefined) return "undefined";
-                                            return String(updateFields);
-                                          })()}
-                                        </pre>
-                                      </div>
-                                    )}
-                                    {!log.metadata.userId && !log.metadata.updateFields && (
-                                      <pre>{JSON.stringify(log.metadata, null, 2)}</pre>
-                                    )}
-                                  </div>
-                                </details>
+                                <button
+                                  onClick={() => openLogModal(log)}
+                                  className={styles.viewDetailsBtn}
+                                >
+                                  <FaEye className={styles.viewIcon} /> View Details
+                                </button>
                               )}
                             </td>
                             <td data-label="Timestamp">
@@ -843,16 +793,12 @@ const AuditLogsPage = () => {
                             </td>
                             <td data-label="IP Address">{log.ipAddress}</td>
                             <td data-label="User Agent">
-                              <details>
-                                <summary>View User Agent</summary>
-                                <div style={{
-                                  whiteSpace: "pre-wrap",
-                                  fontSize: "0.75rem",
-                                  margin: "0.5rem 0"
-                                }}>
-                                  {log.userAgent}
-                                </div>
-                              </details>
+                              <button
+                                onClick={() => openLogModal(log)}
+                                className={styles.viewDetailsBtn}
+                              >
+                                <FaEye className={styles.viewIcon} /> View Details
+                              </button>
                             </td>
                             <td data-label="Login Time">
                               {formatDateTime(log.loginAt)}
@@ -895,6 +841,14 @@ const AuditLogsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal for displaying details */}
+      {selectedLog && (
+        <AuditLogDetailsModal
+          log={selectedLog}
+          onClose={closeLogModal}
+        />
+      )}
     </SuperAdminLayout>
   );
 };
