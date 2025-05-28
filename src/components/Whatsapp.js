@@ -4,30 +4,18 @@ import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
-import styles from "@/styles/Whatsapp.module.css"; // Ensure correct import
+import styles from "@/styles/Whatsapp.module.css";
 
 const Whatsapp = ({ phoneNumber }) => {
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
 
-  // Check if current path is an admin path
-  const isAdminPath = pathname && (
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/superadmin') ||
-    pathname.startsWith('/AdminLogin')
-  );
-
-  // If on admin page, don't render the component
-  if (isAdminPath) {
-    return null;
-  }
-
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768); // Adjust breakpoint as needed
+      setIsMobile(window.innerWidth <= 768);
     };
 
-    handleResize(); // Check on initial render
+    handleResize(); // initial check
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -35,8 +23,15 @@ const Whatsapp = ({ phoneNumber }) => {
     };
   }, []);
 
-  if (isMobile) {
-    return null; // Don't render on mobile screens
+  const isAdminPath = pathname && (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/superadmin') ||
+    pathname.startsWith('/AdminLogin')
+  );
+
+  // ✅ Safe conditional rendering AFTER all hooks
+  if (isAdminPath || isMobile) {
+    return null;
   }
 
   const handleWhatsAppClick = () => {

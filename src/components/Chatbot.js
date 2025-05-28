@@ -9,19 +9,6 @@ const Chatbot = () => {
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
 
-  // Check if current path is an admin path
-  const isAdminPath = pathname && (
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/superadmin') ||
-    pathname.startsWith('/AdminLogin')
-  );
-
-  // If on admin page, don't render the component
-  if (isAdminPath) {
-    return null;
-  }
-
-  // Optimized toggle function
   const toggleChat = useCallback(() => {
     if (typeof window !== "undefined" && window.Tawk_API) {
       window.Tawk_API.toggle();
@@ -42,11 +29,10 @@ const Chatbot = () => {
       }
     };
 
-    // Check every 500ms until Tawk.to API is loaded, then hide default widget
     const checkTawkLoaded = setInterval(() => {
       if (window.Tawk_API) {
         hideTawkDefaults();
-        clearInterval(checkTawkLoaded); // Stop interval once executed
+        clearInterval(checkTawkLoaded);
       }
     }, 500);
 
@@ -55,6 +41,16 @@ const Chatbot = () => {
       clearInterval(checkTawkLoaded);
     };
   }, []);
+
+  const isAdminPath = pathname && (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/superadmin') ||
+    pathname.startsWith('/AdminLogin')
+  );
+
+  if (isAdminPath) {
+    return null;
+  }
 
   return (
     <>
@@ -68,7 +64,6 @@ const Chatbot = () => {
         }}
       />
 
-      {/* Custom chat launcher */}
       <button
         className={`${styles.customLauncher} ${isMobile ? styles.mobile : ""}`}
         onClick={toggleChat}

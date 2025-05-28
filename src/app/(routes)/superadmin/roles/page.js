@@ -7,185 +7,20 @@ import {
   FaUndo,
   FaSpinner,
   FaInfoCircle,
-  FaTachometerAlt,
-  FaUserCog,
-  FaUsers,
-  FaChartBar,
-  FaClipboardList,
-  FaHistory,
-  FaSignOutAlt,
-  FaKey,
-  FaCog,
+  // Removed icons that are now in the reusable Sidebar
+  // FaTachometerAlt, FaUserCog, FaUsers, FaChartBar,
+  // FaClipboardList, FaHistory, FaSignOutAlt, FaKey, FaCog,
 } from "react-icons/fa";
-import Link from "next/link";
+// Removed Link import from here as it's used within the Sidebar
+// import Link from "next/link";
 
-// Authenticated fetch utility
-const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem("adminToken");
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
+import Sidebar from "@/components/superadmin/Sidebar"; // Import reusable Sidebar
+import AccessControl from "@/components/superadmin/AccessControl"; // Import reusable AccessControl
+import { fetchWithAuth } from "@/utils/auth"; // Import reusable fetch utility
 
-  const headers = {
-    ...options.headers,
-    Authorization: `Bearer ${token}`,
-  };
+// Removed the inline SuperAdminLayout Component definition
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    // Token expired or invalid
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "/AdminLogin";
-    throw new Error("Session expired. Please login again.");
-  }
-
-  return response;
-};
-
-// SuperAdmin Layout Component
-const SuperAdminLayout = ({ children, activePage }) => {
-  const router = useRouter();
-  const [roleChecked, setRoleChecked] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-
-  useEffect(() => {
-    const role = localStorage.getItem("adminRole");
-    if (role === "SuperAdmin") {
-      setIsSuperAdmin(true);
-    } else {
-      setIsSuperAdmin(false);
-    }
-    setRoleChecked(true);
-  }, []);
-
-  const handleLogout = () => {
-    // Clear all auth data
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    router.push("/AdminLogin");
-  };
-
-  if (!roleChecked) {
-    // Prevent flicker
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loader}></div>
-        <p>Checking permissions...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.adminPanelContainer}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Super Admin</h2>
-        </div>
-        <nav>
-          <ul className={styles.sidebarNav}>
-            <li>
-              <Link
-                href="/superadmin"
-                className={`${styles.sidebarLink} ${activePage === 'dashboard' ? styles.activeLink : ''}`}
-              >
-                <FaTachometerAlt className={styles.sidebarIcon} />
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/users"
-                className={`${styles.sidebarLink} ${activePage === 'users' ? styles.activeLink : ''}`}
-              >
-                <FaUserCog className={styles.sidebarIcon} />
-                User Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/leads"
-                className={`${styles.sidebarLink} ${activePage === 'leads' ? styles.activeLink : ''}`}
-              >
-                <FaUsers className={styles.sidebarIcon} />
-                Lead Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/analytics"
-                className={`${styles.sidebarLink} ${activePage === 'analytics' ? styles.activeLink : ''}`}
-              >
-                <FaChartBar className={styles.sidebarIcon} />
-                Analytics
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/audit-logs"
-                className={`${styles.sidebarLink} ${activePage === 'audit-logs' ? styles.activeLink : ''}`}
-              >
-                <FaHistory className={styles.sidebarIcon} />
-                Audit Logs
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/roles"
-                className={`${styles.sidebarLink} ${activePage === 'roles' ? styles.activeLink : ''}`}
-              >
-                <FaKey className={styles.sidebarIcon} />
-                Role Permissions
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/settings"
-                className={`${styles.sidebarLink} ${activePage === 'settings' ? styles.activeLink : ''}`}
-              >
-                <FaCog className={styles.sidebarIcon} />
-                Settings
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard"
-                className={styles.sidebarLink}
-              >
-                <FaClipboardList className={styles.sidebarIcon} />
-                Go to Dashboard
-              </Link>
-            </li>
-            <li>
-              <a href="#"
-                onClick={handleLogout}
-                className={styles.sidebarLink}
-              >
-                <FaSignOutAlt className={styles.sidebarIcon} />
-                Logout
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>
-        {children}
-      </main>
-    </div>
-  );
-};
-
-// Permission Table Component
+// Permission Table Component (remains the same, keep it in this file or move to its own component if reused elsewhere)
 const PermissionTable = ({ roleData, onChange, readOnly }) => {
   const handleCheckboxChange = (category, action, value) => {
     if (readOnly) return;
@@ -193,13 +28,43 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
     const newPermissions = {
       ...roleData.permissions,
       [category]: {
-        ...roleData.permissions[category],
-        [action]: value,
+        ...roleData.permissions[category], // Keep existing actions for the category
+        [action]: value, // Update the specific action
       },
     };
 
     onChange(newPermissions);
   };
+
+  // Helper to handle indeterminate state for checkboxes (optional, but good UX)
+  const isIndeterminate = (category, actions) => {
+    const total = actions.length;
+    if (total === 0) return false; // No actions to check
+     // Use optional chaining here
+    const checkedCount = actions.filter(action => roleData.permissions[category]?.[action]).length;
+    return checkedCount > 0 && checkedCount < total;
+  };
+
+   const allChecked = (category, actions) => {
+     if (actions.length === 0) return false;
+      // Use optional chaining here
+     return actions.every(action => roleData.permissions[category]?.[action]);
+   };
+
+  const handleSelectAllCategory = (category, actions, checked) => {
+     if (readOnly) return;
+     const newPermissions = {
+        ...roleData.permissions,
+        [category]: {
+           ...roleData.permissions[category] // Keep existing actions
+        }
+     };
+     actions.forEach(action => {
+        newPermissions[category][action] = checked;
+     });
+     onChange(newPermissions);
+  };
+
 
   return (
     <table className={styles.permissionTable}>
@@ -219,7 +84,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.users.create}
+              checked={roleData.permissions.users?.create || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("users", "create", e.target.checked)}
               disabled={readOnly}
             />
@@ -227,7 +92,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.users.read}
+              checked={roleData.permissions.users?.read || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("users", "read", e.target.checked)}
               disabled={readOnly}
             />
@@ -235,7 +100,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.users.update}
+              checked={roleData.permissions.users?.update || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("users", "update", e.target.checked)}
               disabled={readOnly}
             />
@@ -243,19 +108,19 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.users.delete}
+              checked={roleData.permissions.users?.delete || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("users", "delete", e.target.checked)}
               disabled={readOnly}
             />
           </td>
-          <td>-</td>
+          <td>-</td> {/* Users don't typically have a 'view' permission separate from 'read' in this context */}
         </tr>
         <tr>
           <td>Leads</td>
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.leads.create}
+              checked={roleData.permissions.leads?.create || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("leads", "create", e.target.checked)}
               disabled={readOnly}
             />
@@ -263,7 +128,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.leads.read}
+              checked={roleData.permissions.leads?.read || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("leads", "read", e.target.checked)}
               disabled={readOnly}
             />
@@ -271,7 +136,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.leads.update}
+              checked={roleData.permissions.leads?.update || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("leads", "update", e.target.checked)}
               disabled={readOnly}
             />
@@ -279,19 +144,19 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.leads.delete}
+              checked={roleData.permissions.leads?.delete || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("leads", "delete", e.target.checked)}
               disabled={readOnly}
             />
           </td>
-          <td>-</td>
+           <td>-</td>{/* Leads don't typically have a 'view' permission separate from 'read' in this context */}
         </tr>
         <tr>
           <td>Admins</td>
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.admins.create}
+              checked={roleData.permissions.admins?.create || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("admins", "create", e.target.checked)}
               disabled={readOnly}
             />
@@ -299,7 +164,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.admins.read}
+              checked={roleData.permissions.admins?.read || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("admins", "read", e.target.checked)}
               disabled={readOnly}
             />
@@ -307,7 +172,7 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.admins.update}
+              checked={roleData.permissions.admins?.update || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("admins", "update", e.target.checked)}
               disabled={readOnly}
             />
@@ -315,23 +180,20 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.admins.delete}
+              checked={roleData.permissions.admins?.delete || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("admins", "delete", e.target.checked)}
               disabled={readOnly}
             />
           </td>
-          <td>-</td>
+          <td>-</td> {/* Admins don't typically have a 'view' permission separate from 'read' in this context */}
         </tr>
         <tr>
           <td>Analytics</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
+           <td>-</td><td>-</td><td>-</td><td>-</td>
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.analytics.view}
+              checked={roleData.permissions.analytics?.view || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("analytics", "view", e.target.checked)}
               disabled={readOnly}
             />
@@ -339,23 +201,35 @@ const PermissionTable = ({ roleData, onChange, readOnly }) => {
         </tr>
         <tr>
           <td>Audit Logs</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
-          <td>-</td>
+           <td>-</td><td>-</td><td>-</td><td>-</td>
           <td>
             <input
               type="checkbox"
-              checked={roleData.permissions.auditLogs.view}
+              checked={roleData.permissions.auditLogs?.view || false} // Add ?. and default to false
               onChange={(e) => handleCheckboxChange("auditLogs", "view", e.target.checked)}
               disabled={readOnly}
             />
           </td>
         </tr>
+         {/* Add other features here */}
+         {/* Example: Settings */}
+         <tr>
+            <td>Settings</td>
+            <td>-</td><td>-</td><td>-</td><td>-</td>
+             <td>
+               <input
+                 type="checkbox"
+                 checked={roleData.permissions.settings?.view || false} // Add ?. and default to false
+                 onChange={(e) => handleCheckboxChange("settings", "view", e.target.checked)}
+                 disabled={readOnly}
+               />
+             </td>
+         </tr>
       </tbody>
     </table>
   );
 };
+
 
 // Role Permissions Management Page
 const RolePermissionsPage = () => {
@@ -363,115 +237,206 @@ const RolePermissionsPage = () => {
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState([]);
   const [error, setError] = useState(null);
-  const [activeRole, setActiveRole] = useState("Admin");
+  const [activeRole, setActiveRole] = useState("Admin"); // Default to Admin
   const [hasChanges, setHasChanges] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeRoleData, setActiveRoleData] = useState(null);
   const [originalRoleData, setOriginalRoleData] = useState(null);
-  const [userRole, setUserRole] = useState(null); // Track user role
+  const [userRole, setUserRole] = useState(null); // Track user role from localStorage
 
-  // Authentication check
+  // Authentication check and initial data fetch
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
-    setUserRole(role);
+    setUserRole(role); // Set user role state
 
     if (!token) {
       router.push("/AdminLogin");
-      return;
+      return; // Stop further execution if not authenticated
     }
 
-    if (role !== "SuperAdmin" && role !== "Admin") {
-      router.push("/dashboard");
-      return;
-    }
+    // No need to explicitly redirect non-SuperAdmins here, AccessControl handles it visually.
+    // But we should still fetch permissions so the sidebar works correctly and the restricted
+    // message shows up with the proper layout.
 
-    // Fetch role permissions
     fetchPermissions();
-    // eslint-disable-next-line
-  }, [router]);
+
+    // The fetchPermissions function will set loading to false when done.
+    // If fetchPermissions fails, loading will also be set to false, and error will be set.
+
+  }, [router]); // Depend on router for initial check
+
+   // Effect to set active role data when permissions are fetched or activeRole changes
+   useEffect(() => {
+     if (permissions.length > 0) {
+       const roleData = permissions.find(r => r.role === activeRole);
+       if (roleData) {
+         setActiveRoleData(roleData);
+         // Create a deep copy for change tracking
+         setOriginalRoleData(JSON.parse(JSON.stringify(roleData)));
+         setHasChanges(false); // Reset changes when active role data is set
+       } else {
+         // Handle case where activeRole doesn't match any fetched roles (e.g., first load)
+         // Default to the first available role if "Admin" is not found
+         const defaultRoleData = permissions[0];
+          if (defaultRoleData) {
+             setActiveRole(defaultRoleData.role);
+             setActiveRoleData(defaultRoleData);
+             setOriginalRoleData(JSON.parse(JSON.stringify(defaultRoleData)));
+             setHasChanges(false);
+          } else {
+             console.error("No role permissions found in API response.");
+             setError("Could not load role permissions.");
+             setLoading(false); // Ensure loading is off if no permissions are found
+          }
+       }
+     }
+   }, [permissions, activeRole]); // Depend on permissions and activeRole
+
 
   const fetchPermissions = async () => {
     setLoading(true);
     setError(null);
 
     try {
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        if (!apiUrl) {
+             throw new Error("API URL is not configured.");
+        }
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/role-permissions`
+        `${apiUrl}/api/role-permissions`
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch role permissions");
+         const errorText = await response.text();
+         console.error("Failed to fetch role permissions:", response.status, errorText);
+        throw new Error(`Failed to fetch role permissions: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      setPermissions(data);
 
-      // Set active role data
-      const activeRoleData = data.find(r => r.role === activeRole);
-      if (activeRoleData) {
-        setActiveRoleData(activeRoleData);
-        setOriginalRoleData(JSON.parse(JSON.stringify(activeRoleData))); // Deep copy
-      }
+       if (Array.isArray(data)) {
+          // Ensure each role has a complete permissions structure with defaults if missing
+          const processedData = data.map(role => ({
+              ...role,
+              permissions: {
+                  users: { create: false, read: false, update: false, delete: false, ...(role.permissions?.users || {}) },
+                  leads: { create: false, read: false, update: false, delete: false, ...(role.permissions?.leads || {}) },
+                  admins: { create: false, read: false, update: false, delete: false, ...(role.permissions?.admins || {}) },
+                  analytics: { view: false, ...(role.permissions?.analytics || {}) },
+                  auditLogs: { view: false, ...(role.permissions?.auditLogs || {}) },
+                  settings: { view: false, ...(role.permissions?.settings || {}) }, // Ensure settings.view exists
+                  // Add other categories with default permissions here
+                  ...(role.permissions || {}), // Include any other categories returned by the API
+              }
+          })).sort((a, b) => {
+            if (a.role === "SuperAdmin") return -1;
+            if (b.role === "SuperAdmin") return 1;
+            return 0; // Keep other roles' order if not SuperAdmin
+          });
+          setPermissions(processedData);
+       } else {
+           throw new Error("Invalid response format from server: Expected an array.");
+       }
 
     } catch (err) {
       console.error("Error fetching permissions:", err);
-      setError(err.message);
+      setError(err.message || "Failed to fetch role permissions. Please try again.");
+       setPermissions([]); // Clear permissions on error
     } finally {
       setLoading(false);
     }
   };
 
   const handleRoleChange = (role) => {
-    // Check for unsaved changes
+    // Check for unsaved changes before switching tabs
     if (hasChanges) {
-      if (!confirm("You have unsaved changes. Discard them?")) {
-        return;
+      if (!confirm("You have unsaved changes. Discard them and switch role?")) {
+        return; // User clicked Cancel
       }
     }
-
+    // If user confirmed or no changes, update active role state
     setActiveRole(role);
-    const roleData = permissions.find(r => r.role === role);
-    if (roleData) {
-      setActiveRoleData(roleData);
-      setOriginalRoleData(JSON.parse(JSON.stringify(roleData))); // Deep copy
-      setHasChanges(false);
-    }
+    // The useEffect hook tied to [activeRole] and [permissions] will handle setting activeRoleData and originalRoleData
   };
 
   const handlePermissionsChange = (newPermissions) => {
-    setActiveRoleData({
+    // Find the index of the active role in the permissions array
+    const activeRoleIndex = permissions.findIndex(p => p.role === activeRoleData.role);
+
+    if (activeRoleIndex === -1) {
+        console.error("Active role not found in permissions list.");
+        return;
+    }
+
+    // Create a new array of permissions with the updated data for the active role
+    const updatedPermissionsList = [
+        ...permissions.slice(0, activeRoleIndex),
+        { ...activeRoleData, permissions: newPermissions },
+        ...permissions.slice(activeRoleIndex + 1)
+    ];
+
+    setPermissions(updatedPermissionsList); // Update the main permissions state
+    setActiveRoleData({ // Update the active role data state
       ...activeRoleData,
       permissions: newPermissions,
     });
 
-    // Check if there are changes
-    setHasChanges(JSON.stringify(newPermissions) !== JSON.stringify(originalRoleData.permissions));
+
+    // Check if there are changes compared to the original data
+     if (originalRoleData) {
+       setHasChanges(JSON.stringify(newPermissions) !== JSON.stringify(originalRoleData.permissions));
+     } else {
+        // If original data wasn't set for some reason, treat any change as having changes
+        setHasChanges(true);
+     }
   };
 
   const handleReset = () => {
     if (originalRoleData) {
-      setActiveRoleData(JSON.parse(JSON.stringify(originalRoleData))); // Reset to original
-      setHasChanges(false);
+       // Find the index of the active role in the permissions array
+       const activeRoleIndex = permissions.findIndex(p => p.role === activeRoleData.role);
+
+       if (activeRoleIndex === -1) {
+           console.error("Active role not found in permissions list during reset.");
+           return;
+       }
+
+       // Create a new array of permissions with the original data for the active role
+       const updatedPermissionsList = [
+           ...permissions.slice(0, activeRoleIndex),
+           JSON.parse(JSON.stringify(originalRoleData)), // Reset to deep copy of original
+           ...permissions.slice(activeRoleIndex + 1)
+       ];
+
+       setPermissions(updatedPermissionsList); // Update the main permissions state
+       setActiveRoleData(JSON.parse(JSON.stringify(originalRoleData))); // Reset active role data state
+       setHasChanges(false); // No changes after resetting
+    } else {
+      console.warn("Original role data not available for reset.");
     }
   };
 
   const handleSave = async () => {
-    if (!activeRoleData) return;
+    if (!activeRoleData || activeRoleData.role === "SuperAdmin" || !hasChanges) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        if (!apiUrl) {
+             throw new Error("API URL is not configured.");
+        }
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/role-permissions/${activeRoleData.role}`,
+        `${apiUrl}/api/role-permissions/${activeRoleData.role}`, // Endpoint by role name
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            permissions: activeRoleData.permissions,
+            permissions: activeRoleData.permissions, // Send only the updated permissions object
           }),
         }
       );
@@ -483,138 +448,128 @@ const RolePermissionsPage = () => {
 
       // Success
       setHasChanges(false);
-      setOriginalRoleData(JSON.parse(JSON.stringify(activeRoleData))); // Update original
+      setOriginalRoleData(JSON.parse(JSON.stringify(activeRoleData))); // Update original to reflect saved state
 
-      // Refresh all permissions
-      await fetchPermissions();
+      // Optionally refresh all permissions from the server to be absolutely sure
+      // await fetchPermissions(); // This will re-trigger the effect that sets activeRoleData
 
     } catch (err) {
       console.error("Error updating permissions:", err);
-      setError(err.message);
+      setError(err.message || "Failed to save changes. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <SuperAdminLayout activePage="roles">
-        <div className={styles.loadingContainer}>
-          <div className={styles.loader}></div>
-          <p>Loading role permissions...</p>
-        </div>
-      </SuperAdminLayout>
-    );
-  }
-
-  // If Admin role, show restricted message
-  if (userRole === "Admin") {
-    return (
-      <SuperAdminLayout activePage="roles">
-        <div style={{
-          padding: "2rem",
-          textAlign: "center",
-          backgroundColor: "#fff5f5",
-          borderRadius: "8px",
-          border: "1px solid #fc8181",
-          margin: "2rem auto",
-          maxWidth: "800px"
-        }}>
-          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>Access Restricted</h2>
-          <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-            You do not have access to the Role Permissions section. Please contact a SuperAdmin for assistance.
-          </p>
-          <p>Your current role permissions do not allow access to this functionality.</p>
-        </div>
-      </SuperAdminLayout>
-    );
-  }
-
+  // Use the imported Sidebar and AccessControl components
   return (
-    <SuperAdminLayout activePage="roles">
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Role Permissions</h1>
-        <p className={styles.pageDescription}>
-          Manage what each role can access and modify in the system.
-        </p>
-      </div>
+    <div className={styles.adminPanelContainer}>
+      {/* Sidebar is always present */}
+      <Sidebar activePage="roles" />
 
-      {error && <div className={styles.errorMessage}>{error}</div>}
+      <main className={styles.mainContent}>
+        {/* AccessControl handles the overall access to this page's content */}
+        <AccessControl section="roles">
+          {/* Content only visible to SuperAdmins based on AccessControl */}
+          <div className={styles.pageHeader}>
+            <h1 className={styles.pageTitle}>Role Permissions</h1>
+            <p className={styles.pageDescription}>
+              Manage what each role can access and modify in the system.
+            </p>
+          </div>
 
-      <div className={styles.tabsContainer}>
-        <div className={styles.tabsList}>
-          {permissions.map((p) => (
-            <button
-              key={p.role}
-              className={`${styles.tabButton} ${activeRole === p.role ? styles.activeTab : ''}`}
-              onClick={() => handleRoleChange(p.role)}
-              disabled={submitting}
-            >
-              {p.role}
-            </button>
-          ))}
-        </div>
+          {error && (
+            <div className={styles.errorMessage}>
+              <FaTimes className={styles.errorIcon} style={{ marginRight: "0.5rem" }} /> {error}
+            </div>
+          )}
 
-        {activeRoleData && (
-          <div className={styles.chartContainer}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h2 className={styles.chartTitle}>
-                {activeRoleData.role} Role Permissions
-              </h2>
-
-              <div className={styles.formActions}>
-                {activeRoleData.role !== "SuperAdmin" && (
-                  <>
+          {loading ? (
+            <div className={styles.loadingContainer}>
+              <div className={styles.loader}></div>
+              <p>Loading role permissions...</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.tabsContainer}>
+                <div className={styles.tabsList}>
+                  {permissions.map((p) => (
                     <button
-                      onClick={handleReset}
-                      className={`${styles.button} ${styles.secondaryButton}`}
-                      disabled={!hasChanges || submitting}
+                      key={p.role}
+                      className={`${styles.tabButton} ${activeRole === p.role ? styles.activeTab : ''}`}
+                      onClick={() => handleRoleChange(p.role)}
+                      disabled={submitting}
                     >
-                      <FaUndo style={{ marginRight: "0.5rem" }} /> Reset
+                      {p.role}
                     </button>
-                    <button
-                      onClick={handleSave}
-                      className={`${styles.button} ${styles.primaryButton}`}
-                      disabled={!hasChanges || submitting}
-                    >
-                      {submitting ? (
-                        <>
-                          <FaSpinner className={styles.spinner} style={{ marginRight: "0.5rem" }} />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <FaSave style={{ marginRight: "0.5rem" }} /> Save Changes
-                        </>
+                  ))}
+                </div>
+
+                {activeRoleData && (
+                  <div className={styles.chartContainer}> {/* Using chartContainer for styling */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
+                      <h2 className={styles.chartTitle}>
+                        {activeRoleData.role} Role Permissions
+                      </h2>
+
+                      {activeRoleData.role !== "SuperAdmin" && (
+                        <div className={styles.formActions} style={{ margin: 0 }}> {/* Reset margin */}
+                          <button
+                            onClick={handleReset}
+                            className={`${styles.button} ${styles.secondaryButton}`}
+                            disabled={!hasChanges || submitting}
+                          >
+                            <FaUndo style={{ marginRight: "0.5rem" }} /> Reset
+                          </button>
+                          <button
+                            onClick={handleSave}
+                            className={`${styles.button} ${styles.primaryButton}`}
+                            disabled={!hasChanges || submitting}
+                          >
+                            {submitting ? (
+                              <>
+                                <FaSpinner className={styles.spinner} style={{ marginRight: "0.5rem" }} />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <FaSave style={{ marginRight: "0.5rem" }} /> Save Changes
+                              </>
+                            )}
+                          </button>
+                        </div>
                       )}
-                    </button>
-                  </>
+                    </div>
+
+                    {activeRoleData.role === "SuperAdmin" && (
+                      <div className={styles.bulkActionBar} style={{ backgroundColor: "#fff5f5", color: "#e53e3e" }}> {/* Adjusted styling */}
+                        <FaInfoCircle style={{ marginRight: "0.5rem" }} />
+                        <span>SuperAdmin permissions cannot be modified. SuperAdmins have full access to all features.</span>
+                      </div>
+                    )}
+
+                    <div className={styles.tableResponsive}> {/* Wrap table in responsive div */}
+                      <PermissionTable
+                        roleData={activeRoleData}
+                        onChange={handlePermissionsChange}
+                        readOnly={activeRoleData.role === "SuperAdmin"}
+                      />
+                    </div>
+
+                    {activeRoleData.role !== "SuperAdmin" && (
+                      <p style={{ marginTop: "1rem" }}>
+                        <strong>Note:</strong> Changes to role permissions will affect all users with this role.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-
-            {activeRoleData.role === "SuperAdmin" && (
-              <div className={styles.bulkActionBar} style={{ backgroundColor: "#fff5f5" }}>
-                <FaInfoCircle style={{ color: "#e53e3e", marginRight: "0.5rem" }} />
-                <span>SuperAdmin permissions cannot be modified. SuperAdmins have full access to all features.</span>
-              </div>
-            )}
-
-            <PermissionTable
-              roleData={activeRoleData}
-              onChange={handlePermissionsChange}
-              readOnly={activeRoleData.role === "SuperAdmin"}
-            />
-
-            {activeRoleData.role !== "SuperAdmin" && (
-              <p>
-                <strong>Note:</strong> Changes to role permissions will affect all users with this role.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-    </SuperAdminLayout>
+            </>
+          )}
+           {/* Removed the duplicate loading and restricted message rendering */}
+        </AccessControl>
+      </main>
+    </div>
   );
 };
 

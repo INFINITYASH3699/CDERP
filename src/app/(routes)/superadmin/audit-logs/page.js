@@ -7,275 +7,15 @@ import {
   FaCalendarAlt,
   FaUserShield,
   FaFilter,
-  FaTachometerAlt,
   FaUserCog,
-  FaUsers,
-  FaChartBar,
-  FaClipboardList,
-  FaSignOutAlt,
-  FaKey,
-  FaSpinner,
   FaChevronLeft,
   FaChevronRight,
   FaEye,
-  FaCog,
 } from "react-icons/fa";
-import Link from "next/link";
+import Sidebar from "@/components/superadmin/Sidebar";
+import AccessControl from "@/components/superadmin/AccessControl";
+import { fetchWithAuth } from "@/utils/auth";
 import AuditLogDetailsModal from "@/components/superadmin/AuditLogDetailsModal";
-
-// Authenticated fetch utility
-const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem("adminToken");
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const headers = {
-    ...options.headers,
-    Authorization: `Bearer ${token}`,
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    // Token expired or invalid
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "/AdminLogin";
-    throw new Error("Session expired. Please login again.");
-  }
-
-  return response;
-};
-
-// SuperAdmin Layout Component
-const SuperAdminLayout = ({ children, activePage }) => {
-  const router = useRouter();
-  const [role, setRole] = useState(null);
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    const storedRole = localStorage.getItem("adminRole");
-    setRole(storedRole);
-    setChecked(true);
-  }, []);
-
-  const handleLogout = () => {
-    // Clear all auth data
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    router.push("/AdminLogin");
-  };
-
-  if (!checked) {
-    // Wait for role to be loaded from localStorage
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loader}></div>
-        <p>Loading...</p>
-      </div>
-    );
-  }
-
-  if (role !== "SuperAdmin") {
-    // Show complete sidebar with styled restricted message for non-SuperAdmin users
-    return (
-      <div className={styles.adminPanelContainer}>
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <h2 className={styles.sidebarTitle}>Super Admin</h2>
-          </div>
-          <nav>
-            <ul className={styles.sidebarNav}>
-              <li>
-                <Link href="/superadmin" className={styles.sidebarLink}>
-                  <FaTachometerAlt className={styles.sidebarIcon} />
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/superadmin/users" className={styles.sidebarLink}>
-                  <FaUserCog className={styles.sidebarIcon} />
-                  User Management
-                </Link>
-              </li>
-              <li>
-                <Link href="/superadmin/leads" className={styles.sidebarLink}>
-                  <FaUsers className={styles.sidebarIcon} />
-                  Lead Management
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/superadmin/analytics"
-                  className={styles.sidebarLink}
-                >
-                  <FaChartBar className={styles.sidebarIcon} />
-                  Analytics
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/superadmin/audit-logs"
-                  className={`${styles.sidebarLink} ${styles.activeLink}`}
-                >
-                  <FaHistory className={styles.sidebarIcon} />
-                  Audit Logs
-                </Link>
-              </li>
-              <li>
-                <Link href="/superadmin/roles" className={styles.sidebarLink}>
-                  <FaKey className={styles.sidebarIcon} />
-                  Role Permissions
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className={styles.sidebarLink}>
-                  <FaClipboardList className={styles.sidebarIcon} />
-                  Go to Dashboard
-                </Link>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  onClick={handleLogout}
-                  className={styles.sidebarLink}
-                >
-                  <FaSignOutAlt className={styles.sidebarIcon} />
-                  Logout
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </aside>
-        <main className={styles.mainContent}>
-          <div
-            style={{
-              padding: "2rem",
-              textAlign: "center",
-              backgroundColor: "#fff5f5",
-              borderRadius: "8px",
-              border: "1px solid #fc8181",
-              margin: "2rem auto",
-              maxWidth: "800px",
-            }}
-          >
-            <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>
-              Access Restricted
-            </h2>
-            <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-              You do not have access to the Audit Logs section. Please contact a
-              SuperAdmin for assistance.
-            </p>
-            <p>
-              Your current role permissions do not allow access to this
-              functionality.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.adminPanelContainer}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Super Admin</h2>
-        </div>
-        <nav>
-          <ul className={styles.sidebarNav}>
-            <li>
-              <Link
-                href="/superadmin"
-                className={`${styles.sidebarLink} ${activePage === "dashboard" ? styles.activeLink : ""}`}
-              >
-                <FaTachometerAlt className={styles.sidebarIcon} />
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/users"
-                className={`${styles.sidebarLink} ${activePage === "users" ? styles.activeLink : ""}`}
-              >
-                <FaUserCog className={styles.sidebarIcon} />
-                User Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/leads"
-                className={`${styles.sidebarLink} ${activePage === "leads" ? styles.activeLink : ""}`}
-              >
-                <FaUsers className={styles.sidebarIcon} />
-                Lead Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/analytics"
-                className={`${styles.sidebarLink} ${activePage === "analytics" ? styles.activeLink : ""}`}
-              >
-                <FaChartBar className={styles.sidebarIcon} />
-                Analytics
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/audit-logs"
-                className={`${styles.sidebarLink} ${activePage === "audit-logs" ? styles.activeLink : ""}`}
-              >
-                <FaHistory className={styles.sidebarIcon} />
-                Audit Logs
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/roles"
-                className={`${styles.sidebarLink} ${activePage === "roles" ? styles.activeLink : ""}`}
-              >
-                <FaKey className={styles.sidebarIcon} />
-                Role Permissions
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/settings"
-                className={`${styles.sidebarLink} ${activePage === "settings" ? styles.activeLink : ""}`}
-              >
-                <FaCog className={styles.sidebarIcon} />
-                Settings
-              </Link>
-            </li>
-            <li>
-              <Link href="/dashboard" className={styles.sidebarLink}>
-                <FaClipboardList className={styles.sidebarIcon} />
-                Go to Dashboard
-              </Link>
-            </li>
-            <li>
-              <a href="#" onClick={handleLogout} className={styles.sidebarLink}>
-                <FaSignOutAlt className={styles.sidebarIcon} />
-                Logout
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>{children}</main>
-    </div>
-  );
-};
 
 // Format date with time
 const formatDateTime = (dateString) => {
@@ -306,8 +46,8 @@ const AuditLogsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const [userRole, setUserRole] = useState(null); // To track current user role
-  const [selectedLog, setSelectedLog] = useState(null); // For modal display
+  const [userRole, setUserRole] = useState(null);
+  const [selectedLog, setSelectedLog] = useState(null);
   const logsPerPage = 10;
   const router = useRouter();
 
@@ -333,7 +73,6 @@ const AuditLogsPage = () => {
     } else {
       fetchLoginHistory(1, filters);
     }
-    // eslint-disable-next-line
   }, [router]);
 
   // Fetch data when page or tab changes
@@ -344,22 +83,19 @@ const AuditLogsPage = () => {
     } else {
       fetchLoginHistory(currentPage, filters);
     }
-    // eslint-disable-next-line
   }, [currentPage, activeTab]);
 
   // Fetch admins for filter dropdown
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || window.location.origin;
         const url = `${apiUrl}/api/admins`;
-        console.log("Fetching admin users from:", url);
-
         const adminsResponse = await fetchWithAuth(url);
 
         if (adminsResponse.ok) {
           const adminsData = await adminsResponse.json();
-          console.log(`Fetched ${adminsData.length} admin users`);
           setAdmins(adminsData);
         }
       } catch (err) {
@@ -378,7 +114,6 @@ const AuditLogsPage = () => {
       // Fix for adminId parameter - use performedBy instead
       if (filterObj.adminId) {
         queryParams.append("performedBy", filterObj.adminId);
-        console.log("Filtering by performedBy:", filterObj.adminId);
       }
 
       if (filterObj.action) queryParams.append("action", filterObj.action);
@@ -395,7 +130,6 @@ const AuditLogsPage = () => {
       // Debug the URL being fetched
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
       const url = `${apiUrl}/api/audit-logs?${queryParams.toString()}`;
-      console.log("Fetching audit logs from:", url);
 
       const response = await fetchWithAuth(url);
 
@@ -404,18 +138,14 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      console.log("Received audit logs:", data);
 
       // Check if we got valid data back
       if (Array.isArray(data.logs)) {
         setLogs(data.logs);
         setTotalItems(data.totalItems || 0);
         setTotalPages(data.totalPages || 1);
-
-        // Clear error if we had one before but now succeeded
         setError(null);
       } else {
-        // Handle case where response is ok but data is malformed
         throw new Error("Invalid response format from server");
       }
     } catch (err) {
@@ -437,7 +167,6 @@ const AuditLogsPage = () => {
       // Fix for adminId parameter - use userId instead for login history
       if (filterObj.adminId) {
         queryParams.append("userId", filterObj.adminId);
-        console.log("Filtering login history by userId:", filterObj.adminId);
       }
 
       if (filterObj.startDate)
@@ -449,7 +178,6 @@ const AuditLogsPage = () => {
       // Debug the URL being fetched
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || window.location.origin;
       const url = `${apiUrl}/api/login-history?${queryParams.toString()}`;
-      console.log("Fetching login history from:", url);
 
       const response = await fetchWithAuth(url);
 
@@ -458,18 +186,14 @@ const AuditLogsPage = () => {
       }
 
       const data = await response.json();
-      console.log("Received login history:", data);
 
       // Check if we got valid data back
       if (Array.isArray(data.logs)) {
         setLogs(data.logs);
         setTotalItems(data.totalItems || 0);
         setTotalPages(data.totalPages || 1);
-
-        // Clear error if we had one before but now succeeded
         setError(null);
       } else {
-        // Handle case where response is ok but data is malformed
         throw new Error("Invalid response format from server");
       }
     } catch (err) {
@@ -561,380 +285,365 @@ const AuditLogsPage = () => {
     }
   };
 
-  // New function to open the log details modal
   const openLogModal = (log) => {
     setSelectedLog(log);
   };
 
-  // New function to close the log details modal
   const closeLogModal = () => {
     setSelectedLog(null);
   };
 
   if (loading) {
     return (
-      <SuperAdminLayout activePage="audit-logs">
-        <div className={styles.loadingContainer}>
-          <div className={styles.loader}></div>
-          <p>Loading audit logs...</p>
-        </div>
-      </SuperAdminLayout>
-    );
-  }
-
-  // If Admin role, show restricted message
-  if (userRole === "Admin") {
-    return (
-      <SuperAdminLayout activePage="audit-logs">
-        <div
-          style={{
-            padding: "2rem",
-            textAlign: "center",
-            backgroundColor: "#fff5f5",
-            borderRadius: "8px",
-            border: "1px solid #fc8181",
-            margin: "2rem auto",
-            maxWidth: "800px",
-          }}
-        >
-          <h2 style={{ color: "#e53e3e", marginBottom: "1rem" }}>
-            Access Restricted
-          </h2>
-          <p style={{ fontSize: "1.1rem", marginBottom: "1.5rem" }}>
-            You do not have access to the Audit Logs section. Please contact a
-            SuperAdmin for assistance.
-          </p>
-          <p>
-            Your current role permissions do not allow access to this
-            functionality.
-          </p>
-        </div>
-      </SuperAdminLayout>
+      <div className={styles.adminPanelContainer}>
+        <Sidebar activePage="audit-logs" />
+        <main className={styles.mainContent}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.loader}></div>
+            <p>Loading audit logs...</p>
+          </div>
+        </main>
+      </div>
     );
   }
 
   return (
-    <SuperAdminLayout activePage="audit-logs">
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Audit Logs</h1>
-        <p className={styles.pageDescription}>
-          Track all actions and login attempts in the system.
-        </p>
-      </div>
-
-      {error && (
-        <div
-          style={{
-            padding: "1rem",
-            backgroundColor: "#fff5f5",
-            borderRadius: "8px",
-            border: "1px solid #fc8181",
-            margin: "1rem 0",
-            color: "#e53e3e",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      <div className={styles.tabsContainer}>
-        <div className={styles.tabsList}>
-          <button
-            className={`${styles.tabButton} ${activeTab === "audit" ? styles.activeTab : ""}`}
-            onClick={() => changeTab("audit")}
-          >
-            <FaHistory style={{ marginRight: "0.5rem" }} /> Audit Logs
-          </button>
-          <button
-            className={`${styles.tabButton} ${activeTab === "login" ? styles.activeTab : ""}`}
-            onClick={() => changeTab("login")}
-          >
-            <FaUserShield style={{ marginRight: "0.5rem" }} /> Login History
-          </button>
-        </div>
-
-        <div className={styles.chartContainer}>
-          <div className={styles.formGrid} style={{ marginBottom: "1.5rem" }}>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>
-                <FaUserCog style={{ marginRight: "0.5rem" }} />
-                {activeTab === "audit" ? "Admin User (performedBy)" : "Admin User (userId)"}
-              </label>
-              <select
-                name="adminId"
-                value={filters.adminId}
-                onChange={handleFilterChange}
-                className={styles.formSelect}
-              >
-                <option value="">All Admins</option>
-                {admins.map((admin) => (
-                  <option key={admin._id} value={admin._id}>
-                    {admin.username} ({admin.role})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {activeTab === "audit" && (
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>
-                  <FaFilter style={{ marginRight: "0.5rem" }} /> Action Type
-                </label>
-                <select
-                  name="action"
-                  value={filters.action}
-                  onChange={handleFilterChange}
-                  className={styles.formSelect}
-                >
-                  <option value="">All Actions</option>
-                  <option value="create_lead">Create Lead</option>
-                  <option value="update_lead">Update Lead</option>
-                  <option value="delete_lead">Delete Lead</option>
-                  {/* Removed login option since it's in Login History tab */}
-                  <option value="create_admin">Create Admin</option>
-                  <option value="update_admin">Update Admin</option>
-                  <option value="delete_admin">Delete Admin</option>
-                </select>
-              </div>
-            )}
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>
-                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range
-                (Start)
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={filters.startDate}
-                onChange={handleFilterChange}
-                className={styles.formInput}
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>
-                <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range
-                (End)
-              </label>
-              <input
-                type="date"
-                name="endDate"
-                value={filters.endDate}
-                onChange={handleFilterChange}
-                className={styles.formInput}
-              />
-            </div>
-
-            <div
-              className={styles.formActions}
-              style={{ alignSelf: "flex-end" }}
-            >
-              <button
-                className={`${styles.button} ${styles.secondaryButton}`}
-                onClick={resetFilters}
-              >
-                Reset
-              </button>
-              <button
-                className={`${styles.button} ${styles.primaryButton}`}
-                onClick={applyFilters}
-              >
-                <FaFilter style={{ marginRight: "0.5rem" }} /> Apply Filters
-              </button>
-            </div>
+    <div className={styles.adminPanelContainer}>
+      <Sidebar activePage="audit-logs" />
+      <main className={styles.mainContent}>
+        <AccessControl section="audit-logs">
+          <div className={styles.pageHeader}>
+            <h1 className={styles.pageTitle}>Audit Logs</h1>
+            <p className={styles.pageDescription}>
+              Track all actions and login attempts in the system.
+            </p>
           </div>
 
-          {activeTab === "audit" ? (
-            <>
-              <h2 className={styles.chartTitle}>System Audit Logs</h2>
-              <div className={styles.tableCard}>
-                <div className={styles.tableResponsive}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Admin</th>
-                        <th>Role</th>
-                        <th>Action</th>
-                        <th>Target</th>
-                        <th>Details</th>
-                        <th>Timestamp</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs.length > 0 ? (
-                        logs.map((log) => (
-                          <tr key={log._id}>
-                            <td data-label="Admin">
-                              {log.adminId?.username || "Unknown"}
-                            </td>
-                            <td data-label="Role">
-                              <span
-                                className={`${styles.roleBadge} ${
-                                  log.adminId?.role === "SuperAdmin"
-                                    ? styles.superAdminBadge
-                                    : log.adminId?.role === "Admin"
-                                      ? styles.adminBadge
-                                      : log.adminId?.role === "ViewMode"
-                                        ? styles.viewModeBadge
-                                        : styles.editModeBadge
-                                }`}
-                              >
-                                {log.adminId?.role || "Unknown"}
-                              </span>
-                            </td>
-                            <td data-label="Action">
-                              <span className={styles.badge}>{log.action}</span>
-                            </td>
-                            <td data-label="Target">{log.target}</td>
-                            <td data-label="Details">
-                              {log.metadata && (
-                                <button
-                                  onClick={() => openLogModal(log)}
-                                  className={styles.viewDetailsBtn}
-                                >
-                                  <FaEye className={styles.viewIcon} /> View
-                                  Details
-                                </button>
-                              )}
-                            </td>
-                            <td data-label="Timestamp">
-                              {formatDateTime(log.createdAt)}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan="6"
-                            style={{
-                              textAlign: "center",
-                              padding: "1.5rem",
-                              color: "#e53e3e",
-                            }}
-                          >
-                            {Object.values(filters).some(value => value !== "") ?
-                              "No audit logs found matching your filter criteria. Try adjusting your filters." :
-                              "No audit logs found"}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className={styles.chartTitle}>Login History</h2>
-              <div className={styles.tableCard}>
-                <div className={styles.tableResponsive}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Admin</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>IP Address</th>
-                        <th>User Agent</th>
-                        <th>Login Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs.length > 0 ? (
-                        logs.map((log) => (
-                          <tr key={log._id}>
-                            <td data-label="Admin">
-                              {log.adminId?.username || "Unknown"}
-                            </td>
-                            <td data-label="Role">
-                              <span
-                                className={`${styles.roleBadge} ${
-                                  log.adminId?.role === "SuperAdmin"
-                                    ? styles.superAdminBadge
-                                    : log.adminId?.role === "Admin"
-                                      ? styles.adminBadge
-                                      : log.adminId?.role === "ViewMode"
-                                        ? styles.viewModeBadge
-                                        : styles.editModeBadge
-                                }`}
-                              >
-                                {log.adminId?.role || "Unknown"}
-                              </span>
-                            </td>
-                            <td data-label="Status">
-                              <span
-                                className={`${styles.badge} ${log.success ? styles.badgeGreen : styles.badgeRed}`}
-                              >
-                                {log.success ? "Success" : "Failed"}
-                              </span>
-                            </td>
-                            <td data-label="IP Address">{log.ipAddress}</td>
-                            <td data-label="User Agent">
-                              <button
-                                onClick={() => openLogModal(log)}
-                                className={styles.viewDetailsBtn}
-                              >
-                                <FaEye className={styles.viewIcon} /> View
-                                Details
-                              </button>
-                            </td>
-                            <td data-label="Login Time">
-                              {formatDateTime(log.loginAt)}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td
-                            colSpan="6"
-                            style={{
-                              textAlign: "center",
-                              padding: "1.5rem",
-                              color: "#e53e3e",
-                            }}
-                          >
-                            {Object.values(filters).some(value => value !== "") ?
-                              "No login history found matching your filter criteria. Try adjusting your filters." :
-                              "No login history found"}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
+          {error && (
+            <div
+              style={{
+                padding: "1rem",
+                backgroundColor: "#fff5f5",
+                borderRadius: "8px",
+                border: "1px solid #fc8181",
+                margin: "1rem 0",
+                color: "#e53e3e",
+              }}
+            >
+              {error}
+            </div>
           )}
 
-          {/* Pagination controls */}
-          <div className={styles.paginationControls}>
-            <button
-              onClick={handlePrevPage}
-              disabled={currentPage === 1}
-              className={styles.paginationButton}
-            >
-              <FaChevronLeft /> Previous
-            </button>
-            <span className={styles.pageIndicator}>
-              Page {currentPage} of {totalPages || 1}
-            </span>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages || totalItems === 0}
-              className={styles.paginationButton}
-            >
-              Next <FaChevronRight />
-            </button>
-          </div>
-        </div>
-      </div>
+          <div className={styles.tabsContainer}>
+            <div className={styles.tabsList}>
+              <button
+                className={`${styles.tabButton} ${activeTab === "audit" ? styles.activeTab : ""}`}
+                onClick={() => changeTab("audit")}
+              >
+                <FaHistory style={{ marginRight: "0.5rem" }} /> Audit Logs
+              </button>
+              <button
+                className={`${styles.tabButton} ${activeTab === "login" ? styles.activeTab : ""}`}
+                onClick={() => changeTab("login")}
+              >
+                <FaUserShield style={{ marginRight: "0.5rem" }} /> Login History
+              </button>
+            </div>
 
-      {/* Modal for displaying details */}
-      {selectedLog && (
-        <AuditLogDetailsModal log={selectedLog} onClose={closeLogModal} />
-      )}
-    </SuperAdminLayout>
+            <div className={styles.chartContainer}>
+              <div
+                className={styles.formGrid}
+                style={{ marginBottom: "1.5rem" }}
+              >
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    <FaUserCog style={{ marginRight: "0.5rem" }} />
+                    {activeTab === "audit"
+                      ? "Admin User (performedBy)"
+                      : "Admin User (userId)"}
+                  </label>
+                  <select
+                    name="adminId"
+                    value={filters.adminId}
+                    onChange={handleFilterChange}
+                    className={styles.formSelect}
+                  >
+                    <option value="">All Admins</option>
+                    {admins.map((admin) => (
+                      <option key={admin._id} value={admin._id}>
+                        {admin.username} ({admin.role})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {activeTab === "audit" && (
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>
+                      <FaFilter style={{ marginRight: "0.5rem" }} /> Action Type
+                    </label>
+                    <select
+                      name="action"
+                      value={filters.action}
+                      onChange={handleFilterChange}
+                      className={styles.formSelect}
+                    >
+                      <option value="">All Actions</option>
+                      <option value="create_lead">Create Lead</option>
+                      <option value="update_lead">Update Lead</option>
+                      <option value="delete_lead">Delete Lead</option>
+                      <option value="create_admin">Create Admin</option>
+                      <option value="update_admin">Update Admin</option>
+                      <option value="delete_admin">Delete Admin</option>
+                    </select>
+                  </div>
+                )}
+
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date
+                    Range (Start)
+                  </label>
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={filters.startDate}
+                    onChange={handleFilterChange}
+                    className={styles.formInput}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date
+                    Range (End)
+                  </label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={filters.endDate}
+                    onChange={handleFilterChange}
+                    className={styles.formInput}
+                  />
+                </div>
+
+                <div
+                  className={styles.formActions}
+                  style={{ alignSelf: "flex-end" }}
+                >
+                  <button
+                    className={`${styles.button} ${styles.secondaryButton}`}
+                    onClick={resetFilters}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className={`${styles.button} ${styles.primaryButton}`}
+                    onClick={applyFilters}
+                  >
+                    <FaFilter style={{ marginRight: "0.5rem" }} /> Apply Filters
+                  </button>
+                </div>
+              </div>
+
+              {activeTab === "audit" ? (
+                <>
+                  <h2 className={styles.chartTitle}>System Audit Logs</h2>
+                  <div className={styles.tableCard}>
+                    <div className={styles.tableResponsive}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Admin</th>
+                            <th>Role</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Details</th>
+                            <th>Timestamp</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logs.length > 0 ? (
+                            logs.map((log) => (
+                              <tr key={log._id}>
+                                <td data-label="Admin">
+                                  {log.adminId?.username || "Unknown"}
+                                </td>
+                                <td data-label="Role">
+                                  <span
+                                    className={`${styles.roleBadge} ${
+                                      log.adminId?.role === "SuperAdmin"
+                                        ? styles.superAdminBadge
+                                        : log.adminId?.role === "Admin"
+                                          ? styles.adminBadge
+                                          : log.adminId?.role === "ViewMode"
+                                            ? styles.viewModeBadge
+                                            : styles.editModeBadge
+                                    }`}
+                                  >
+                                    {log.adminId?.role || "Unknown"}
+                                  </span>
+                                </td>
+                                <td data-label="Action">
+                                  <span className={styles.badge}>
+                                    {log.action}
+                                  </span>
+                                </td>
+                                <td data-label="Target">{log.target}</td>
+                                <td data-label="Details">
+                                  {log.metadata && (
+                                    <button
+                                      onClick={() => openLogModal(log)}
+                                      className={styles.viewDetailsBtn}
+                                    >
+                                      <FaEye className={styles.viewIcon} /> View
+                                      Details
+                                    </button>
+                                  )}
+                                </td>
+                                <td data-label="Timestamp">
+                                  {formatDateTime(log.createdAt)}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan="6"
+                                style={{
+                                  textAlign: "center",
+                                  padding: "1.5rem",
+                                  color: "#e53e3e",
+                                }}
+                              >
+                                {Object.values(filters).some(
+                                  (value) => value !== ""
+                                )
+                                  ? "No audit logs found matching your filter criteria. Try adjusting your filters."
+                                  : "No audit logs found"}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className={styles.chartTitle}>Login History</h2>
+                  <div className={styles.tableCard}>
+                    <div className={styles.tableResponsive}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Admin</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>IP Address</th>
+                            <th>User Agent</th>
+                            <th>Login Time</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logs.length > 0 ? (
+                            logs.map((log) => (
+                              <tr key={log._id}>
+                                <td data-label="Admin">
+                                  {log.adminId?.username || "Unknown"}
+                                </td>
+                                <td data-label="Role">
+                                  <span
+                                    className={`${styles.roleBadge} ${
+                                      log.adminId?.role === "SuperAdmin"
+                                        ? styles.superAdminBadge
+                                        : log.adminId?.role === "Admin"
+                                          ? styles.adminBadge
+                                          : log.adminId?.role === "ViewMode"
+                                            ? styles.viewModeBadge
+                                            : styles.editModeBadge
+                                    }`}
+                                  >
+                                    {log.adminId?.role || "Unknown"}
+                                  </span>
+                                </td>
+                                <td data-label="Status">
+                                  <span
+                                    className={`${styles.badge} ${log.success ? styles.badgeGreen : styles.badgeRed}`}
+                                  >
+                                    {log.success ? "Success" : "Failed"}
+                                  </span>
+                                </td>
+                                <td data-label="IP Address">{log.ipAddress}</td>
+                                <td data-label="User Agent">
+                                  <button
+                                    onClick={() => openLogModal(log)}
+                                    className={styles.viewDetailsBtn}
+                                  >
+                                    <FaEye className={styles.viewIcon} /> View
+                                    Details
+                                  </button>
+                                </td>
+                                <td data-label="Login Time">
+                                  {formatDateTime(log.loginAt)}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td
+                                colSpan="6"
+                                style={{
+                                  textAlign: "center",
+                                  padding: "1.5rem",
+                                  color: "#e53e3e",
+                                }}
+                              >
+                                {Object.values(filters).some(
+                                  (value) => value !== ""
+                                )
+                                  ? "No login history found matching your filter criteria. Try adjusting your filters."
+                                  : "No login history found"}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Pagination controls */}
+              <div className={styles.paginationControls}>
+                <button
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className={styles.paginationButton}
+                >
+                  <FaChevronLeft /> Previous
+                </button>
+                <span className={styles.pageIndicator}>
+                  Page {currentPage} of {totalPages || 1}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages || totalItems === 0}
+                  className={styles.paginationButton}
+                >
+                  Next <FaChevronRight />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Modal for displaying details */}
+          {selectedLog && (
+            <AuditLogDetailsModal log={selectedLog} onClose={closeLogModal} />
+          )}
+        </AccessControl>
+      </main>
+    </div>
   );
 };
 

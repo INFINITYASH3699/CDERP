@@ -4,168 +4,15 @@ import { useRouter } from "next/navigation";
 import styles from "@/styles/dashboard/Dashboard.module.css";
 import {
   FaUsers,
-  FaUserCog,
   FaChartBar,
-  FaClipboardList,
-  FaHistory,
-  FaSignOutAlt,
-  FaTachometerAlt,
-  FaKey,
   FaCalendarAlt,
-  FaCog,
-  FaSpinner,
-  FaUserTag,
-  FaMapMarkerAlt,
-  FaGraduationCap,
   FaCheck,
   FaPhoneAlt,
   FaBan,
+  FaUserCog,
 } from "react-icons/fa";
-import Link from "next/link";
-
-// Authenticated fetch utility
-const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem("adminToken");
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const headers = {
-    ...options.headers,
-    Authorization: `Bearer ${token}`,
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    // Token expired or invalid
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "/AdminLogin";
-    throw new Error("Session expired. Please login again.");
-  }
-
-  return response;
-};
-
-// SuperAdmin Layout Component
-const SuperAdminLayout = ({ children, activePage }) => {
-  const router = useRouter();
-
-  const handleLogout = () => {
-    // Clear all auth data
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    router.push("/AdminLogin");
-  };
-
-  return (
-    <div className={styles.adminPanelContainer}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Super Admin</h2>
-        </div>
-        <nav>
-          <ul className={styles.sidebarNav}>
-            <li>
-              <Link
-                href="/superadmin"
-                className={`${styles.sidebarLink} ${activePage === 'dashboard' ? styles.activeLink : ''}`}
-              >
-                <FaTachometerAlt className={styles.sidebarIcon} />
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/users"
-                className={`${styles.sidebarLink} ${activePage === 'users' ? styles.activeLink : ''}`}
-              >
-                <FaUserCog className={styles.sidebarIcon} />
-                User Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/leads"
-                className={`${styles.sidebarLink} ${activePage === 'leads' ? styles.activeLink : ''}`}
-              >
-                <FaUsers className={styles.sidebarIcon} />
-                Lead Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/analytics"
-                className={`${styles.sidebarLink} ${activePage === 'analytics' ? styles.activeLink : ''}`}
-              >
-                <FaChartBar className={styles.sidebarIcon} />
-                Analytics
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/audit-logs"
-                className={`${styles.sidebarLink} ${activePage === 'audit-logs' ? styles.activeLink : ''}`}
-              >
-                <FaHistory className={styles.sidebarIcon} />
-                Audit Logs
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/roles"
-                className={`${styles.sidebarLink} ${activePage === 'roles' ? styles.activeLink : ''}`}
-              >
-                <FaKey className={styles.sidebarIcon} />
-                Role Permissions
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/settings"
-                className={`${styles.sidebarLink} ${activePage === 'settings' ? styles.activeLink : ''}`}
-              >
-                <FaCog className={styles.sidebarIcon} />
-                Settings
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard"
-                className={styles.sidebarLink}
-              >
-                <FaClipboardList className={styles.sidebarIcon} />
-                Go to Dashboard
-              </Link>
-            </li>
-            <li>
-              <a href="#"
-                onClick={handleLogout}
-                className={styles.sidebarLink}
-              >
-                <FaSignOutAlt className={styles.sidebarIcon} />
-                Logout
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>
-        {children}
-      </main>
-    </div>
-  );
-};
+import Sidebar from "@/components/superadmin/Sidebar";
+import { fetchWithAuth } from "@/utils/auth";
 
 // Simple bar chart component
 const BarChart = ({ data, title, valuePrefix = "", valueSuffix = "" }) => {
@@ -308,237 +155,256 @@ const AnalyticsPage = () => {
 
   if (loading) {
     return (
-      <SuperAdminLayout activePage="analytics">
-        <div className={styles.loadingContainer}>
-          <div className={styles.loader}></div>
-          <p>Loading analytics data...</p>
-        </div>
-      </SuperAdminLayout>
+      <div className={styles.adminPanelContainer}>
+        <Sidebar activePage="analytics" />
+        <main className={styles.mainContent}>
+          <div className={styles.loadingContainer}>
+            <div className={styles.loader}></div>
+            <p>Loading analytics data...</p>
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <SuperAdminLayout activePage="analytics">
-        <div className={styles.errorMessage}>{error}</div>
-      </SuperAdminLayout>
+      <div className={styles.adminPanelContainer}>
+        <Sidebar activePage="analytics" />
+        <main className={styles.mainContent}>
+          <div className={styles.errorMessage}>{error}</div>
+        </main>
+      </div>
     );
   }
 
   return (
-    <SuperAdminLayout activePage="analytics">
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Analytics Dashboard</h1>
-        <p className={styles.pageDescription}>
-          View key metrics and performance indicators for your system.
-        </p>
-      </div>
+    <div className={styles.adminPanelContainer}>
+      <Sidebar activePage="analytics" />
+      <main className={styles.mainContent}>
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Analytics Dashboard</h1>
+          <p className={styles.pageDescription}>
+            View key metrics and performance indicators for your system.
+          </p>
+        </div>
 
-      {/* Date Range Filter */}
-      <div className={styles.chartContainer} style={{ marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h3 className={styles.chartTitle}>
-            <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range Filter
-          </h3>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <label>From:</label>
-              <input
-                type="date"
-                name="startDate"
-                value={dateRange.startDate}
-                onChange={handleDateChange}
-                className={styles.formInput}
-                style={{ width: "auto" }}
-              />
+        {/* Date Range Filter */}
+        <div className={styles.chartContainer} style={{ marginBottom: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+            <h3 className={styles.chartTitle}>
+              <FaCalendarAlt style={{ marginRight: "0.5rem" }} /> Date Range Filter
+            </h3>
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <label>From:</label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={dateRange.startDate}
+                  onChange={handleDateChange}
+                  className={styles.formInput}
+                  style={{ width: "auto" }}
+                />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <label>To:</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={dateRange.endDate}
+                  onChange={handleDateChange}
+                  className={styles.formInput}
+                  style={{ width: "auto" }}
+                />
+              </div>
+              <button
+                onClick={applyDateFilter}
+                className={`${styles.button} ${styles.primaryButton}`}
+              >
+                Apply
+              </button>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <label>To:</label>
-              <input
-                type="date"
-                name="endDate"
-                value={dateRange.endDate}
-                onChange={handleDateChange}
-                className={styles.formInput}
-                style={{ width: "auto" }}
-              />
-            </div>
-            <button
-              onClick={applyDateFilter}
-              className={`${styles.button} ${styles.primaryButton}`}
-            >
-              Apply
-            </button>
           </div>
         </div>
-      </div>
 
-      {analytics && (
-        <>
-          {/* Overview Stats */}
-          <h2>Quick Overview</h2>
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconBlue}`}>
-                <FaUsers />
+        {analytics && (
+          <>
+            {/* Overview Stats */}
+            <h2>Quick Overview</h2>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconBlue}`}>
+                  <FaUsers />
+                </div>
+                <p className={styles.statLabel}>Total Leads</p>
+                <p className={styles.statValue}>{analytics.leads.total}</p>
               </div>
-              <p className={styles.statLabel}>Total Leads</p>
-              <p className={styles.statValue}>{analytics.leads.total}</p>
-            </div>
 
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconGreen}`}>
-                <FaCheck />
-              </div>
-              <p className={styles.statLabel}>Converted Leads</p>
-              <p className={styles.statValue}>
-                {analytics.leads.byStatus.find(s => s._id === "Converted")?.count || 0}
-              </p>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconYellow}`}>
-                <FaPhoneAlt />
-              </div>
-              <p className={styles.statLabel}>Contacted Leads</p>
-              <p className={styles.statValue}>
-                {analytics.leads.byStatus.find(s => s._id === "Contacted")?.count || 0}
-              </p>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconRed}`}>
-                <FaBan />
-              </div>
-              <p className={styles.statLabel}>Rejected Leads</p>
-              <p className={styles.statValue}>
-                {analytics.leads.byStatus.find(s => s._id === "Rejected")?.count || 0}
-              </p>
-            </div>
-          </div>
-
-          {/* Time Frame Stats */}
-          <h2>Time Frame Analysis</h2>
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconBlue}`}>
-                <FaCalendarAlt />
-              </div>
-              <p className={styles.statLabel}>Last 7 Days</p>
-              <p className={styles.statValue}>{analytics.leads.lastWeek}</p>
-            </div>
-
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconPurple}`}>
-                <FaCalendarAlt />
-              </div>
-              <p className={styles.statLabel}>Last 30 Days</p>
-              <p className={styles.statValue}>{analytics.leads.lastMonth}</p>
-            </div>
-
-            {conversionRates && (
               <div className={styles.statCard}>
                 <div className={`${styles.cardIcon} ${styles.cardIconGreen}`}>
-                  <FaChartBar />
+                  <FaCheck />
                 </div>
-                <p className={styles.statLabel}>Conversion Rate</p>
-                <p className={styles.statValue}>{conversionRates.rate}%</p>
+                <p className={styles.statLabel}>Converted Leads</p>
+                <p className={styles.statValue}>
+                  {analytics.leads.byStatus.find(s => s._id === "Converted")?.count || 0}
+                </p>
               </div>
-            )}
 
-            <div className={styles.statCard}>
-              <div className={`${styles.cardIcon} ${styles.cardIconRed}`}>
-                <FaUserCog />
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconYellow}`}>
+                  <FaPhoneAlt />
+                </div>
+                <p className={styles.statLabel}>Contacted Leads</p>
+                <p className={styles.statValue}>
+                  {analytics.leads.byStatus.find(s => s._id === "Contacted")?.count || 0}
+                </p>
               </div>
-              <p className={styles.statLabel}>Active Admins</p>
-              <p className={styles.statValue}>{analytics.admins.active}</p>
+
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconRed}`}>
+                  <FaBan />
+                </div>
+                <p className={styles.statLabel}>Rejected Leads</p>
+                <p className={styles.statValue}>
+                  {analytics.leads.byStatus.find(s => s._id === "Rejected")?.count || 0}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Charts Section */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
-            {/* Status Breakdown */}
-            <BarChart
-              data={analytics.leads.byStatus}
-              title="Lead Status Breakdown"
-              valueSuffix=" leads"
-            />
+            {/* Time Frame Stats */}
+            <h2>Time Frame Analysis</h2>
+            <div className={styles.statsGrid}>
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconBlue}`}>
+                  <FaCalendarAlt />
+                </div>
+                <p className={styles.statLabel}>Last 7 Days</p>
+                <p className={styles.statValue}>{analytics.leads.lastWeek}</p>
+              </div>
 
-            {/* Course Breakdown */}
-            <BarChart
-              data={analytics.leads.byCourse}
-              title="Leads by Course"
-              valueSuffix=" leads"
-            />
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconPurple}`}>
+                  <FaCalendarAlt />
+                </div>
+                <p className={styles.statLabel}>Last 30 Days</p>
+                <p className={styles.statValue}>{analytics.leads.lastMonth}</p>
+              </div>
 
-            {/* Location Breakdown */}
-            <BarChart
-              data={analytics.leads.byLocation}
-              title="Leads by Location"
-              valueSuffix=" leads"
-            />
+              {conversionRates && (
+                <div className={styles.statCard}>
+                  <div className={`${styles.cardIcon} ${styles.cardIconGreen}`}>
+                    <FaChartBar />
+                  </div>
+                  <p className={styles.statLabel}>Conversion Rate</p>
+                  <p className={styles.statValue}>{conversionRates.rate}%</p>
+                </div>
+              )}
 
-            {/* Admin Role Distribution */}
-            <BarChart
-              data={analytics.admins.byRole}
-              title="Admin Users by Role"
-              valueSuffix=" users"
-            />
-          </div>
+              <div className={styles.statCard}>
+                <div className={`${styles.cardIcon} ${styles.cardIconRed}`}>
+                  <FaUserCog />
+                </div>
+                <p className={styles.statLabel}>Active Admins</p>
+                <p className={styles.statValue}>{analytics.admins.active}</p>
+              </div>
+            </div>
 
-          {/* Admin Performance */}
-          <h2 style={{ marginTop: "2rem" }}>System Information</h2>
-          <div className={styles.tableCard}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Detail</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td data-label="Category">Leads</td>
-                  <td data-label="Detail">Total Count</td>
-                  <td data-label="Value">{analytics.leads.total}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">Leads</td>
-                  <td data-label="Detail">Last 7 Days</td>
-                  <td data-label="Value">{analytics.leads.lastWeek}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">Leads</td>
-                  <td data-label="Detail">Last 30 Days</td>
-                  <td data-label="Value">{analytics.leads.lastMonth}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">Admin Users</td>
-                  <td data-label="Detail">Total Count</td>
-                  <td data-label="Value">{analytics.admins.total}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">Admin Users</td>
-                  <td data-label="Detail">Active</td>
-                  <td data-label="Value">{analytics.admins.active}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">System</td>
-                  <td data-label="Detail">Current Date</td>
-                  <td data-label="Value">{formatDate(new Date())}</td>
-                </tr>
-                <tr>
-                  <td data-label="Category">System</td>
-                  <td data-label="Detail">Date Range</td>
-                  <td data-label="Value">{formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
-    </SuperAdminLayout>
+            {/* Charts Section */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
+              {/* Status Breakdown */}
+              {analytics.leads.byStatus && (
+                <BarChart
+                  data={analytics.leads.byStatus}
+                  title="Lead Status Breakdown"
+                  valueSuffix=" leads"
+                />
+              )}
+
+              {/* Course Breakdown */}
+              {analytics.leads.byCourse && (
+                <BarChart
+                  data={analytics.leads.byCourse}
+                  title="Leads by Course"
+                  valueSuffix=" leads"
+                />
+              )}
+
+              {/* Location Breakdown */}
+              {analytics.leads.byLocation && (
+                <BarChart
+                  data={analytics.leads.byLocation}
+                  title="Leads by Location"
+                  valueSuffix=" leads"
+                />
+              )}
+
+              {/* Admin Role Distribution */}
+              {analytics.admins.byRole && (
+                <BarChart
+                  data={analytics.admins.byRole}
+                  title="Admin Users by Role"
+                  valueSuffix=" users"
+                />
+              )}
+            </div>
+
+            {/* System Information */}
+            <h2 style={{ marginTop: "2rem" }}>System Information</h2>
+            <div className={styles.tableCard}>
+              <div className={styles.tableResponsive}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Detail</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td data-label="Category">Leads</td>
+                      <td data-label="Detail">Total Count</td>
+                      <td data-label="Value">{analytics.leads.total}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">Leads</td>
+                      <td data-label="Detail">Last 7 Days</td>
+                      <td data-label="Value">{analytics.leads.lastWeek}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">Leads</td>
+                      <td data-label="Detail">Last 30 Days</td>
+                      <td data-label="Value">{analytics.leads.lastMonth}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">Admin Users</td>
+                      <td data-label="Detail">Total Count</td>
+                      <td data-label="Value">{analytics.admins.total}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">Admin Users</td>
+                      <td data-label="Detail">Active</td>
+                      <td data-label="Value">{analytics.admins.active}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">System</td>
+                      <td data-label="Detail">Current Date</td>
+                      <td data-label="Value">{formatDate(new Date())}</td>
+                    </tr>
+                    <tr>
+                      <td data-label="Category">System</td>
+                      <td data-label="Detail">Date Range</td>
+                      <td data-label="Value">{formatDate(dateRange.startDate)} - {formatDate(dateRange.endDate)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
   );
 };
 

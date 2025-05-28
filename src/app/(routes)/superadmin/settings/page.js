@@ -9,160 +9,19 @@ import {
   FaTimes,
   FaToggleOn,
   FaToggleOff,
-  FaUserCog,
-  FaUsers,
-  FaChartBar,
-  FaClipboardList,
-  FaHistory,
-  FaSignOutAlt,
-  FaTachometerAlt,
-  FaKey,
+  // Removed icons that are now in the reusable Sidebar
+  // FaUserCog, FaUsers, FaChartBar, FaClipboardList,
+  // FaHistory, FaSignOutAlt, FaTachometerAlt, FaKey,
 } from "react-icons/fa";
-import Link from "next/link";
+// Removed Link import from here as it's used within the Sidebar
+// import Link from "next/link";
 
-// SuperAdmin Layout Component (imported from parent page)
-const SuperAdminLayout = ({ children, activePage }) => {
-  const router = useRouter();
+import Sidebar from "@/components/superadmin/Sidebar"; // Import reusable Sidebar
+import AccessControl from "@/components/superadmin/AccessControl"; // Import reusable AccessControl
+import { fetchWithAuth } from "@/utils/auth"; // Import reusable fetch utility
 
-  const handleLogout = () => {
-    // Clear all auth data
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    router.push("/AdminLogin");
-  };
-
-  return (
-    <div className={styles.adminPanelContainer}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h2 className={styles.sidebarTitle}>Super Admin</h2>
-        </div>
-        <nav>
-          <ul className={styles.sidebarNav}>
-            <li>
-              <Link
-                href="/superadmin"
-                className={`${styles.sidebarLink} ${activePage === 'dashboard' ? styles.activeLink : ''}`}
-              >
-                <FaTachometerAlt className={styles.sidebarIcon} />
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/users"
-                className={`${styles.sidebarLink} ${activePage === 'users' ? styles.activeLink : ''}`}
-              >
-                <FaUserCog className={styles.sidebarIcon} />
-                User Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/leads"
-                className={`${styles.sidebarLink} ${activePage === 'leads' ? styles.activeLink : ''}`}
-              >
-                <FaUsers className={styles.sidebarIcon} />
-                Lead Management
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/analytics"
-                className={`${styles.sidebarLink} ${activePage === 'analytics' ? styles.activeLink : ''}`}
-              >
-                <FaChartBar className={styles.sidebarIcon} />
-                Analytics
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/audit-logs"
-                className={`${styles.sidebarLink} ${activePage === 'audit-logs' ? styles.activeLink : ''}`}
-              >
-                <FaHistory className={styles.sidebarIcon} />
-                Audit Logs
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/roles"
-                className={`${styles.sidebarLink} ${activePage === 'roles' ? styles.activeLink : ''}`}
-              >
-                <FaKey className={styles.sidebarIcon} />
-                Role Permissions
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/superadmin/settings"
-                className={`${styles.sidebarLink} ${activePage === 'settings' ? styles.activeLink : ''}`}
-              >
-                <FaCog className={styles.sidebarIcon} />
-                Settings
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/dashboard"
-                className={styles.sidebarLink}
-              >
-                <FaClipboardList className={styles.sidebarIcon} />
-                Go to Dashboard
-              </Link>
-            </li>
-            <li>
-              <a href="#"
-                onClick={handleLogout}
-                className={styles.sidebarLink}
-              >
-                <FaSignOutAlt className={styles.sidebarIcon} />
-                Logout
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
-      <main className={styles.mainContent}>
-        {children}
-      </main>
-    </div>
-  );
-};
-
-// Utility function for authenticated API requests
-const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem("adminToken");
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const headers = {
-    ...options.headers,
-    Authorization: `Bearer ${token}`,
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  if (response.status === 401) {
-    // Token expired or invalid
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminRole");
-    localStorage.removeItem("adminUsername");
-    localStorage.removeItem("adminId");
-    localStorage.removeItem("isAdminLoggedIn");
-    window.location.href = "/AdminLogin";
-    throw new Error("Session expired. Please login again.");
-  }
-
-  return response;
-};
+// Removed the inline SuperAdminLayout Component definition
+// Removed the inline fetchWithAuth utility definition
 
 const SettingsPage = () => {
   const [settings, setSettings] = useState([]);
@@ -170,66 +29,87 @@ const SettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [userRole, setUserRole] = useState(null);
-  const [totalLeads, setTotalLeads] = useState(0);
+  const [userRole, setUserRole] = useState(null); // State to track user role
+  const [totalLeads, setTotalLeads] = useState(0); // Default or placeholder
   const [sliderValue, setSliderValue] = useState(0);
   const router = useRouter();
 
-  // Authentication check
+  // Authentication check and initial data fetch
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
     const role = localStorage.getItem("adminRole");
-    setUserRole(role);
+    setUserRole(role); // Set user role state
 
     if (!token) {
       router.push("/AdminLogin");
-      return;
+      return; // Stop further execution if not authenticated
     }
 
-    if (role !== "SuperAdmin") {
-      router.push("/dashboard");
-      return;
-    }
+    // The AccessControl component will handle showing the restricted message
+    // for non-SuperAdmins. We still fetch data if authenticated, but the UI
+    // will be restricted by AccessControl.
 
     fetchSettings();
-    fetchLeadCount();
-    // eslint-disable-next-line
-  }, [router]);
+    fetchLeadCount(); // Fetch lead count for the slider max value
 
-  // Update the slider value when settings change
+  }, [router]); // Depend on router for initial check
+
+  // Update the slider value when settings change and settings data is available
   useEffect(() => {
-    const maxLeadsSetting = settings.find(s => s.key === 'maxLeadsToDisplay');
-    if (maxLeadsSetting) {
-      setSliderValue(maxLeadsSetting.value);
+    if (settings.length > 0) {
+      const maxLeadsSetting = settings.find(s => s.key === 'maxLeadsToDisplay');
+      if (maxLeadsSetting !== undefined) { // Use !== undefined to handle value being 0
+        setSliderValue(maxLeadsSetting.value);
+      }
     }
-    // eslint-disable-next-line
-  }, [settings]);
+  }, [settings]); // Depend on settings state
+
 
   const fetchSettings = async () => {
     setLoading(true);
     setError(null);
     try {
-      console.log("Fetching settings...");
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''; // Use empty string as fallback
+       if (!apiUrl) {
+            console.error("NEXT_PUBLIC_API_URL is not defined");
+            setError("API URL is not configured.");
+            setLoading(false);
+            return;
+       }
+
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings`
+        `${apiUrl}/api/settings`
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch settings");
+         const errorText = await response.text();
+         console.error("Failed to fetch settings response:", response.status, errorText);
+        throw new Error(`Failed to fetch settings: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("Settings fetched:", data);
 
-      // Filter out location-based settings
-      const filteredSettings = data.filter(setting => 
-        !['enableLocationAutoAssign', 'enableLocationBasedAssignment', 'locationAssignments', 'locationBasedAssignment'].includes(setting.key)
-      );
+      // Filter out location-based settings keys you don't want to display here
+      // This list should match the keys your API might return but you want to ignore
+      const excludedKeys = [
+        'enableLocationAutoAssign',
+        'enableLocationBasedAssignment',
+        'locationAssignments',
+        'locationBasedAssignment',
+        // Add any other keys you don't want to display in the general settings list
+      ];
+
+      const filteredSettings = Array.isArray(data) ? data.filter(setting =>
+        !excludedKeys.includes(setting.key)
+      ) : [];
+
 
       setSettings(filteredSettings);
+
     } catch (err) {
       console.error("Error fetching settings:", err);
-      setError(err.message);
+      setError(err.message || "Failed to fetch settings. Please try again.");
+      setSettings([]); // Clear settings on error
     } finally {
       setLoading(false);
     }
@@ -237,22 +117,30 @@ const SettingsPage = () => {
 
   const fetchLeadCount = async () => {
     try {
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+       if (!apiUrl) {
+           console.error("API URL is not configured, cannot fetch lead count.");
+           return; // Don't try fetching if API URL is not set
+       }
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/leads/count`
+        `${apiUrl}/api/leads/count` // Assuming you have a lead count endpoint
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch lead count");
+         const errorText = await response.text();
+         console.error("Failed to fetch lead count response:", response.status, errorText);
+        throw new Error(`Failed to fetch lead count: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      setTotalLeads(data.count);
+       // Assuming the response is like { count: number }
+      setTotalLeads(data.count || 0); // Use fetched count, default to 0 if 0 or undefined
     } catch (err) {
       console.error("Error fetching lead count:", err);
-      // Default to 300 if we can't get the count
-      setTotalLeads(300);
+      // Keep the default or previous totalLeads value
     }
   };
+
 
   const updateSetting = async (key, value) => {
     setSaving(true);
@@ -260,32 +148,43 @@ const SettingsPage = () => {
     setSuccess(null);
 
     try {
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+       if (!apiUrl) {
+            throw new Error("API URL is not configured.");
+       }
+
+       // Find the current description for the setting key
+       const currentSetting = settings.find(s => s.key === key);
+       const descriptionToSend = currentSetting?.description || "";
+
       const response = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/settings/${key}`,
+        `${apiUrl}/api/settings/${key}`, // Assuming endpoint is /api/settings/:key
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            value,
-            description: settings.find(s => s.key === key)?.description || ""
+            value: value, // Send the new value
+            description: descriptionToSend // Send existing description or empty string
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error("Failed to update setting");
+         const errorData = await response.json();
+         console.error(`Failed to update setting ${key} response:`, response.status, errorData);
+        throw new Error(errorData.message || `Failed to update setting: ${response.statusText}`);
       }
 
-      // Update the local state
+      // Update the local state with the new value
       setSettings(prevSettings =>
         prevSettings.map(setting =>
-          setting.key === key ? { ...setting, value } : setting
+          setting.key === key ? { ...setting, value: value } : setting
         )
       );
 
-      setSuccess(`Setting "${key}" updated successfully`);
+      setSuccess(`Setting "${key}" updated successfully.`);
 
       // Clear success message after 3 seconds
       setTimeout(() => {
@@ -293,7 +192,7 @@ const SettingsPage = () => {
       }, 3000);
     } catch (err) {
       console.error(`Error updating setting ${key}:`, err);
-      setError(err.message);
+      setError(err.message || "Failed to save changes. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -302,75 +201,59 @@ const SettingsPage = () => {
   const toggleSetting = (key) => {
     const setting = settings.find(s => s.key === key);
     if (setting) {
-      updateSetting(key, !setting.value);
+      updateSetting(key, !setting.value); // Toggle boolean value
+    } else {
+        console.warn(`Setting with key "${key}" not found to toggle.`);
     }
   };
 
   // Function to render different setting types
   const renderSetting = (setting) => {
+    // Filter out excluded keys here as well, although already filtered in fetchSettings
+    const excludedKeys = [
+        'enableLocationAutoAssign',
+        'enableLocationBasedAssignment',
+        'locationAssignments',
+        'locationBasedAssignment',
+      ];
+    if (excludedKeys.includes(setting.key)) {
+        return null; // Don't render these settings
+    }
+
     switch (setting.key) {
       case 'restrictLeadEditing':
-        return (
-          <div className={styles.settingItem} key={setting.key}>
-            <div className={styles.settingInfo}>
-              <h3 className={styles.settingTitle}>Restrict Lead Editing</h3>
-              <p className={styles.settingDescription}>
-                When enabled, only admins or assigned users can edit lead status and contacted fields in dashboard page
-              </p>
-              {setting.value ? (
-                <div className={styles.settingStatus}>
-                  <FaCheck className={styles.statusIconActive} />
-                  <span className={styles.statusTextActive}>Enabled</span>
-                </div>
-              ) : (
-                <div className={styles.settingStatus}>
-                  <FaTimes className={styles.statusIconInactive} />
-                  <span className={styles.statusTextInactive}>Disabled</span>
-                </div>
-              )}
-            </div>
-            <div className={styles.settingAction}>
-              <button
-                onClick={() => toggleSetting(setting.key)}
-                className={styles.toggleButton}
-                disabled={saving}
-              >
-                {setting.value ? (
-                  <FaToggleOn className={styles.toggleIconOn} />
-                ) : (
-                  <FaToggleOff className={styles.toggleIconOff} />
-                )}
-              </button>
-            </div>
-          </div>
-        );
       case 'restrictCounselorView':
+        // These are simple boolean toggles
+        const title = setting.key === 'restrictLeadEditing' ? 'Restrict Lead Editing' : 'Restrict Counselor View';
+        const description = setting.key === 'restrictLeadEditing' ?
+          'When enabled, only admins or assigned users can edit lead status and contacted fields in dashboard page.' :
+          'When enabled, counselors can only see leads assigned to them.';
+        const isActive = Boolean(setting.value); // Ensure value is treated as boolean
+
         return (
           <div className={styles.settingItem} key={setting.key}>
             <div className={styles.settingInfo}>
-              <h3 className={styles.settingTitle}>Restrict Counselor View</h3>
-              <p className={styles.settingDescription}>
-                When enabled, counselors can only see leads assigned to them
-              </p>
-              {setting.value ? (
-                <div className={styles.settingStatus}>
+              <h3 className={styles.settingTitle}>{title}</h3>
+              <p className={styles.settingDescription}>{description}</p>
+              <div className={styles.settingStatus}>
+                {isActive ? (
                   <FaCheck className={styles.statusIconActive} />
-                  <span className={styles.statusTextActive}>Enabled</span>
-                </div>
-              ) : (
-                <div className={styles.settingStatus}>
+                ) : (
                   <FaTimes className={styles.statusIconInactive} />
-                  <span className={styles.statusTextInactive}>Disabled</span>
-                </div>
-              )}
+                )}
+                <span className={isActive ? styles.statusTextActive : styles.statusTextInactive}>
+                  {isActive ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
             </div>
             <div className={styles.settingAction}>
               <button
                 onClick={() => toggleSetting(setting.key)}
                 className={styles.toggleButton}
                 disabled={saving}
+                title={isActive ? 'Click to Disable' : 'Click to Enable'}
               >
-                {setting.value ? (
+                {isActive ? (
                   <FaToggleOn className={styles.toggleIconOn} />
                 ) : (
                   <FaToggleOff className={styles.toggleIconOff} />
@@ -380,12 +263,17 @@ const SettingsPage = () => {
           </div>
         );
       case 'maxLeadsToDisplay':
+        // This is a number slider/input
+         // Use fetched total leads or a reasonable default max if totalLeads is 0
+         const maxValueForSlider = totalLeads > 0 ? totalLeads : 300;
+
+
         return (
           <div className={styles.settingItem} key={setting.key}>
             <div className={styles.settingInfo}>
               <h3 className={styles.settingTitle}>Maximum Leads to Display</h3>
               <p className={styles.settingDescription}>
-                Set the maximum number of leads to display on the dashboard (0 shows all leads)
+                Set the maximum number of leads to display on the main dashboard page (0 shows all leads).
               </p>
               <div className={styles.settingStatus}>
                 <span className={styles.statusTextActive}>
@@ -397,10 +285,11 @@ const SettingsPage = () => {
                   <input
                     type="range"
                     min="0"
-                    max={totalLeads > 0 ? totalLeads : 300}
+                    max={maxValueForSlider}
                     step="1"
                     value={sliderValue}
                     onChange={(e) => setSliderValue(parseInt(e.target.value))}
+                    // Update on mouse up/touch end to avoid excessive API calls while dragging
                     onMouseUp={() => updateSetting(setting.key, sliderValue)}
                     onTouchEnd={() => updateSetting(setting.key, sliderValue)}
                     className={styles.slider}
@@ -409,97 +298,134 @@ const SettingsPage = () => {
                   <input
                     type="number"
                     min="0"
-                    max={totalLeads > 0 ? totalLeads : 300}
+                    max={maxValueForSlider}
                     value={sliderValue}
                     onChange={(e) => {
                       const value = e.target.value === '' ? 0 : parseInt(e.target.value);
-                      const clamped = Math.min(value, totalLeads > 0 ? totalLeads : 300);
+                      // Clamp value between min and max
+                      const clamped = Math.max(0, Math.min(value, maxValueForSlider));
                       setSliderValue(clamped);
+                       // Consider adding a debounce if updating on every change
                     }}
-                    onBlur={() => updateSetting(setting.key, sliderValue)}
+                     onBlur={(e) => {
+                        const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+                         const clamped = Math.max(0, Math.min(value, maxValueForSlider));
+                         // Only update if the value changed from the last saved/fetched value
+                         if (clamped !== setting.value) {
+                            updateSetting(setting.key, clamped);
+                         } else {
+                             // If value didn't change, reset sliderValue just in case input had temporary invalid value
+                             setSliderValue(setting.value); // Reset to the actual setting value
+                         }
+                      }}
                     className={styles.numberInput}
                     disabled={saving}
                   />
                 </div>
                 <div className={styles.sliderLabels}>
-                  <span></span>
-                  <span>{totalLeads > 0 ? totalLeads : 300}</span>
+                   <span>0 (All)</span>
+                   <span>{maxValueForSlider} ({totalLeads} Total)</span> {/* Show actual total leads */}
                 </div>
               </div>
             </div>
-            <div className={styles.settingAction}>
-              {/* This empty div keeps the layout consistent with other setting items */}
+             <div className={styles.settingAction}>
+              {/* This empty div helps align content */}
             </div>
           </div>
         );
       default:
+        // Render fallback for any other setting type (e.g., string, number, object)
         return (
           <div className={styles.settingItem} key={setting.key}>
             <div className={styles.settingInfo}>
               <h3 className={styles.settingTitle}>{setting.key}</h3>
               <p className={styles.settingDescription}>
-                {setting.description || 'No description provided'}
+                {setting.description || 'No description provided.'}
               </p>
               <pre className={styles.settingValue}>
-                {JSON.stringify(setting.value, null, 2)}
+                 {typeof setting.value === 'object' || Array.isArray(setting.value)
+                  ? JSON.stringify(setting.value, null, 2) // Pretty print objects/arrays
+                  : String(setting.value) // Display other types directly
+                 }
               </pre>
+            </div>
+             <div className={styles.settingAction}>
+              {/* This empty div helps align content */}
             </div>
           </div>
         );
     }
   };
 
-  if (loading) {
-    return (
-      <SuperAdminLayout activePage="settings">
-        <div className={styles.loadingContainer}>
-          <div className={styles.loader}></div>
-          <p>Loading settings...</p>
-        </div>
-      </SuperAdminLayout>
-    );
+   // If still loading initial data and user role is not yet determined/checked
+  if (loading && userRole === null) {
+      return (
+         <div className={styles.loadingContainer}>
+             <div className={styles.loader}></div>
+             <p>Loading authentication...</p>
+         </div>
+      );
   }
 
+
+  // Use the imported Sidebar and AccessControl components
   return (
-    <SuperAdminLayout activePage="settings">
-      <div className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>
-          <FaCog className={styles.headerIcon} /> System Settings
-        </h1>
-        <p className={styles.pageDescription}>
-          Configure system-wide settings for your application
-        </p>
-      </div>
+    <div className={styles.adminPanelContainer}>
+      {/* Sidebar is always present */}
+      <Sidebar activePage="settings" />
 
-      {error && (
-        <div className={styles.errorMessage}>
-          <FaTimes className={styles.errorIcon} /> {error}
-        </div>
-      )}
-
-      {success && (
-        <div className={styles.successMessage}>
-          <FaCheck className={styles.successIcon} /> {success}
-        </div>
-      )}
-
-      <div className={styles.settingsContainer}>
-        {settings.length === 0 ? (
-          <p className={styles.noSettings}>No settings found</p>
-        ) : (
-          settings.map(setting => renderSetting(setting))
-        )}
-      </div>
-
-      {saving && (
-        <div className={styles.savingOverlay}>
-          <div className={styles.savingContent}>
-            <FaSpinner className={styles.spinnerIcon} />
-            <span>Saving changes...</span>
+      <main className={styles.mainContent}>
+        {/* AccessControl handles the overall access to this page's content */}
+        <AccessControl section="settings">
+          {/* Content only visible to SuperAdmins based on AccessControl */}
+          <div className={styles.pageHeader}>
+            <h1 className={styles.pageTitle}>
+              <FaCog className={styles.headerIcon} /> System Settings
+            </h1>
+            <p className={styles.pageDescription}>
+              Configure system-wide settings for your application.
+            </p>
           </div>
-        </div>
-      )}
-    </SuperAdminLayout>
+
+          {error && (
+            <div className={styles.errorMessage}>
+              <FaTimes className={styles.errorIcon} style={{ marginRight: "0.5rem" }} /> {error}
+            </div>
+          )}
+
+          {success && (
+            <div className={styles.successMessage}>
+              <FaCheck className={styles.successIcon} style={{ marginRight: "0.5rem" }} /> {success}
+            </div>
+          )}
+
+          {loading ? (
+               <div className={styles.loadingContainer}>
+                  <div className={styles.loader}></div>
+                  <p>Loading settings...</p>
+               </div>
+            ) : (
+             <div className={styles.settingsContainer}>
+               {settings.length === 0 && !error ? ( // Only show "No settings" if not loading and no error
+                 <p className={styles.noSettings}>No configurable settings found.</p>
+               ) : (
+                 settings.map(setting => renderSetting(setting))
+               )}
+             </div>
+           )}
+
+
+          {saving && (
+            <div className={styles.savingOverlay}>
+              <div className={styles.savingContent}>
+                <FaSpinner className={styles.spinner} /> {/* Used spinner class from dashboard styles */}
+                <span>Saving changes...</span>
+              </div>
+            </div>
+          )}
+        </AccessControl>
+      </main>
+    </div>
   );
 };
 
