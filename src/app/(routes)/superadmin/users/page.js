@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import styles from "@/styles/dashboard/Dashboard.module.css";
 import {
   FaUserPlus,
   FaEdit,
@@ -10,13 +9,8 @@ import {
   FaTimes,
   FaSpinner,
   FaKey,
-  FaUndo, // Although not used in this specific component, keep if part of shared styles
-  // Removed icons that are now in the reusable Sidebar
-  // FaTachometerAlt, FaUserCog, FaUsers, FaChartBar,
-  // FaClipboardList, FaHistory, FaSignOutAlt, FaCog,
+  FaShieldAlt, // For error state icon
 } from "react-icons/fa";
-// Removed Link import from here as it's used within the Sidebar
-// import Link from "next/link";
 
 import Sidebar from "@/components/superadmin/Sidebar"; // Import reusable Sidebar
 import AccessControl from "@/components/superadmin/AccessControl"; // Import reusable AccessControl
@@ -45,9 +39,6 @@ const COLOR_OPTIONS = [
   { code: "#f6ad55", name: "Light Orange" },
   { code: "#feb2b2", name: "Light Coral" },
 ];
-
-// Removed the inline Authenticated fetch utility definition
-// Removed the inline SuperAdminLayout Component definition
 
 // User Management Page
 const UserManagement = () => {
@@ -95,8 +86,14 @@ const UserManagement = () => {
 
   // Authentication check and initial data fetch
   useEffect(() => {
-    const token = localStorage.getItem("adminToken");
-    const role = localStorage.getItem("adminRole");
+    const token =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("adminToken")
+        : null;
+    const role =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("adminRole")
+        : null;
     setUserRole(role); // Set user role state
 
     if (!token) {
@@ -166,11 +163,13 @@ const UserManagement = () => {
   const validateForm = () => {
     const errors = {};
 
-    // Check username
-    if (!formData.username.trim()) {
-      errors.username = "Username is required";
-    } else if (formData.username.trim().length < 3) {
-      errors.username = "Username must be at least 3 characters";
+    // Check username (required for create, but form field is readonly for edit/reset)
+    if (modalType === "create") {
+      if (!formData.username.trim()) {
+        errors.username = "Username is required";
+      } else if (formData.username.trim().length < 3) {
+        errors.username = "Username must be at least 3 characters";
+      }
     }
 
     // Check email format (only if provided)
@@ -196,10 +195,10 @@ const UserManagement = () => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: type === "checkbox" ? checked : value,
     });
 
     // Clear error for this field if it exists
@@ -228,6 +227,7 @@ const UserManagement = () => {
       active: true, // Default status
     });
     setFormErrors({}); // Clear previous errors
+    setSelectedAdmin(null); // Ensure selectedAdmin is null for create
     setModalType("create");
     setShowModal(true);
     setError(null); // Clear page-level error
@@ -293,6 +293,8 @@ const UserManagement = () => {
 
     // Validate form for create, edit, and reset
     if (!validateForm()) {
+      console.error("Form validation failed:", formErrors);
+      // You might want to scroll to the first error here if the form is long
       return; // Stop if validation fails
     }
 
@@ -381,6 +383,23 @@ const UserManagement = () => {
         console.warn(
           "Attempted to change role or status of logged-in SuperAdmin. Action prevented."
         );
+        setError(
+          "You cannot change the role or status of your own SuperAdmin account."
+        );
+        setSubmitting(false); // Turn off submitting
+        return; // Stop the update process
+      }
+
+      // Prevent changing role of SuperAdmin to something else
+      if (
+        selectedAdmin.role === "SuperAdmin" &&
+        formData.role !== "SuperAdmin"
+      ) {
+        setError(
+          "You cannot change a SuperAdmin's role to a non-SuperAdmin role."
+        );
+        setSubmitting(false); // Turn off submitting
+        return; // Stop the update process
       }
 
       const response = await fetchWithAuth(
@@ -445,6 +464,15 @@ const UserManagement = () => {
         throw new Error("No admin selected for password reset.");
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       if (!apiUrl) throw new Error("API URL is not configured.");
+
+      // Prevent resetting SuperAdmin password via this interface
+      if (selectedAdmin.role === "SuperAdmin") {
+        setError(
+          "Password reset for SuperAdmins is not allowed via this interface."
+        );
+        setSubmitting(false); // Turn off submitting
+        return; // Stop the reset process
+      }
 
       const response = await fetchWithAuth(
         `${apiUrl}/api/admins/${selectedAdmin._id}/reset-password`, // Assuming a specific endpoint for password reset
@@ -552,6 +580,22 @@ const UserManagement = () => {
       return;
     }
 
+    // Prevent deactivating the SuperAdmin role if it's the only SuperAdmin
+    if (admin.role === "SuperAdmin" && !admin.active) {
+      // If trying to deactivate a SuperAdmin
+      const superAdmins = admins.filter(
+        (a) => a.role === "SuperAdmin" && a._id !== admin._id
+      );
+      // Count other *active* SuperAdmins. If none, prevent deactivation.
+      if (superAdmins.filter((a) => a.active).length === 0) {
+        alert("Cannot deactivate the last active SuperAdmin account.");
+        console.warn(
+          "Attempted to deactivate the last active SuperAdmin account."
+        );
+        return;
+      }
+    }
+
     setLoading(true); // Show loading indicator
     setError(null); // Clear previous errors
 
@@ -609,597 +653,792 @@ const UserManagement = () => {
   };
 
   // If still loading initial data and user role is not yet determined/checked
+  // This check prevents rendering the main content or AccessControl before auth check
   if (loading && userRole === null) {
     return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.loader}></div>
-        <p>Loading authentication...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+        {/* Loading Spinner */}
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <div
+            className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"
+            style={{ animationDirection: "reverse", animationDuration: "1.5s" }}
+          ></div>
+        </div>
+        <p className="mt-8 text-center text-gray-600">
+          Loading authentication...
+        </p>
       </div>
     );
   }
 
   // Use the imported Sidebar and AccessControl components
   return (
-    <div className={styles.adminPanelContainer}>
+    // Main container flex layout
+    <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar is always present */}
       <Sidebar activePage="users" />
 
-      <main className={styles.mainContent}>
+      {/* Main content area - takes remaining space */}
+      <main className="flex-1 lg:ml-0 pt-16 lg:pt-0 overflow-auto">
         {/* AccessControl handles the overall access to this page's content */}
+        {/* Content only visible to users with 'users' access */}
         <AccessControl section="users">
-          {/* Content only visible to SuperAdmins (and possibly specific Admins) based on AccessControl */}
-          <div className={styles.pageHeader}>
-            <h1 className={styles.pageTitle}>User Management</h1>
-            <p className={styles.pageDescription}>
-              Create and manage admin users and their permissions.
-            </p>
-          </div>
-
-          {error && (
-            <div className={styles.errorMessage}>
-              <FaTimes
-                className={styles.errorIcon}
-                style={{ marginRight: "0.5rem" }}
-              />{" "}
-              {error}
+          {/* Page content container with padding and max-width */}
+          <div className="p-6 max-w-7xl mx-auto">
+            {/* Page Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                User Management
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Create and manage admin users and their permissions.
+              </p>
             </div>
-          )}
 
-          <div
-            className={styles.formActions}
-            style={{ marginBottom: "1.5rem" }}
-          >
-            <button
-              className={`${styles.button} ${styles.primaryButton}`}
-              onClick={openCreateModal}
-              disabled={loading || submitting}
-            >
-              <FaUserPlus style={{ marginRight: "0.5rem" }} /> Create New Admin
-            </button>
-          </div>
+            {/* Error Message Display */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md relative mb-4 flex items-center">
+                <FaTimes className="mr-2 text-xl" />
+                {error}
+              </div>
+            )}
 
-          {loading && !admins.length ? ( // Show full-page loader only if no admins are loaded yet
-            <div className={styles.loadingContainer}>
-              <div className={styles.loader}></div>
-              <p>Loading users...</p>
+            {/* Create User Button */}
+            <div className="flex justify-start mb-6">
+              <button
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={openCreateModal}
+                disabled={loading || submitting}
+              >
+                <FaUserPlus className="mr-2" /> Create New Admin
+              </button>
             </div>
-          ) : (
-            <div className={styles.tableCard}>
-              <div className={styles.tableResponsive}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Username</th>
-                      <th>Email</th>
-                      <th>Role</th>
-                      <th>Location</th>
-                      <th>Color</th>
-                      <th>Status</th>
-                      <th>Created At</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {admins.length > 0 ? (
-                      admins.map((admin) => (
-                        <tr key={admin._id}>
-                          <td data-label="Username">{admin.username}</td>
-                          <td data-label="Email">{admin.email || "—"}</td>
-                          <td data-label="Role">
-                            <span
-                              className={`${styles.roleBadge} ${
-                                admin.role === "SuperAdmin"
-                                  ? styles.superAdminBadge
-                                  : admin.role === "Admin"
-                                    ? styles.adminBadge
-                                    : admin.role === "ViewMode"
-                                      ? styles.viewModeBadge
-                                      : styles.editModeBadge // Assuming EditMode uses editModeBadge
-                              }`}
-                            >
-                              {admin.role}
-                            </span>
-                          </td>
-                          <td data-label="Location">{admin.location || "—"}</td>{" "}
-                          {/* Display default if null/undefined */}
-                          <td data-label="Color">
+
+            {/* Loading State for Table */}
+            {loading && !admins.length ? ( // Show table loader only if no admins are loaded yet
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="relative">
+                  <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                  <div
+                    className="absolute inset-0 w-12 h-12 border-4 border-transparent border-t-purple-600 rounded-full animate-spin"
+                    style={{
+                      animationDirection: "reverse",
+                      animationDuration: "1.5s",
+                    }}
+                  ></div>
+                </div>
+                <p className="mt-4 text-gray-600">Loading users...</p>
+              </div>
+            ) : (
+              /* Admin Users Table Card */
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Mobile View (Cards) */}
+                <div className="lg:hidden divide-y divide-gray-200">
+                  {admins.length > 0 ? (
+                    admins.map((admin) => (
+                      <div key={admin._id} className="p-6 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-gray-900 text-lg flex items-center">
                             <div
+                              className="w-6 h-6 rounded-md mr-2 border border-gray-300"
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
+                                backgroundColor: admin.color || "#4299e1",
                               }}
-                            >
-                              <div
-                                style={{
-                                  width: "24px",
-                                  height: "24px",
-                                  borderRadius: "4px",
-                                  backgroundColor: admin.color || "#4299e1", // Use default if color is missing
-                                  display: "inline-block",
-                                  border: "1px solid #ddd",
-                                }}
-                              ></div>
-                              {/* Optional: Display color name/code next to swatch */}
-                              {/* <span style={{ color: '#555' }}>{getColorName(admin.color)}</span> */}
-                            </div>
-                          </td>
-                          <td data-label="Status">
-                            <span
-                              className={
-                                admin.active
-                                  ? styles.badgeGreen
-                                  : styles.badgeRed
-                              }
-                            >
-                              {admin.active ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td data-label="Created At">
-                            {new Date(admin.createdAt).toLocaleDateString()}
-                          </td>
-                          <td
-                            data-label="Actions"
-                            style={{ display: "flex", gap: "0.5rem" }}
+                            ></div>
+                            {admin.username}
+                          </div>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                              admin.role === "SuperAdmin"
+                                ? "bg-purple-100 text-purple-800 border-purple-200"
+                                : admin.role === "Admin"
+                                  ? "bg-blue-100 text-blue-800 border-blue-200"
+                                  : admin.role === "ViewMode"
+                                    ? "bg-green-100 text-green-800 border-green-200"
+                                    : "bg-yellow-100 text-yellow-800 border-yellow-200" // EditMode
+                            }`}
                           >
-                            <button
-                              onClick={() => openEditModal(admin)}
-                              className={`${styles.button} ${styles.secondaryButton}`}
-                              style={{ padding: "0.25rem 0.5rem" }}
-                              disabled={
-                                submitting ||
-                                (admin._id === getCurrentUserID() &&
-                                  userRole === "SuperAdmin")
-                              } // Prevent editing self if SuperAdmin
-                              title="Edit User"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              onClick={() => openResetPasswordModal(admin)}
-                              className={`${styles.button} ${styles.secondaryButton}`}
-                              style={{ padding: "0.25rem 0.5rem" }}
-                              disabled={
-                                submitting || admin.role === "SuperAdmin"
-                              } // Prevent resetting SuperAdmin password via this interface
-                              title="Reset Password"
-                            >
-                              <FaKey />
-                            </button>
-                            <button
-                              onClick={() => toggleAdminStatus(admin)}
-                              className={`${styles.button} ${admin.active ? styles.dangerButton : styles.primaryButton}`}
-                              style={{ padding: "0.25rem 0.5rem" }}
-                              disabled={
-                                submitting ||
-                                admin._id === getCurrentUserID() ||
-                                admin.role === "SuperAdmin"
-                              } // Prevent deactivating self or SuperAdmin role
-                              title={
-                                admin.active
-                                  ? "Deactivate User"
-                                  : "Activate User"
-                              }
-                            >
-                              {admin.active ? <FaTimes /> : <FaCheck />}
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(admin)}
-                              className={`${styles.button} ${styles.dangerButton}`}
-                              style={{ padding: "0.25rem 0.5rem" }}
-                              disabled={
-                                submitting ||
-                                admin._id === getCurrentUserID() ||
-                                admin.role === "SuperAdmin"
-                              } // Prevent deleting self or SuperAdmin role
-                              title="Delete User"
-                            >
-                              <FaTrash />
-                            </button>
+                            {admin.role}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium text-gray-500">
+                            Email:
+                          </span>{" "}
+                          {admin.email || "—"}
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium text-gray-500">
+                            Location:
+                          </span>{" "}
+                          {admin.location || "—"}
+                        </div>
+                        <div className="text-sm flex items-center">
+                          <span className="font-medium text-gray-500 mr-2">
+                            Status:
+                          </span>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              admin.active
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                                admin.active ? "bg-green-400" : "bg-red-400"
+                              }`}
+                            ></div>
+                            {admin.active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <span className="font-medium text-gray-500">
+                            Created At:
+                          </span>{" "}
+                          {new Date(admin.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex gap-2 pt-3 border-t border-gray-100">
+                          <button
+                            onClick={() => openEditModal(admin)}
+                            className="p-2 rounded-md text-blue-600 hover:bg-blue-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={
+                              submitting ||
+                              (admin._id === getCurrentUserID() &&
+                                userRole === "SuperAdmin")
+                            } // Prevent editing self if SuperAdmin
+                            title="Edit User"
+                            aria-label={`Edit user ${admin.username}`}
+                          >
+                            <FaEdit className="text-lg" />
+                          </button>
+                          <button
+                            onClick={() => openResetPasswordModal(admin)}
+                            className="p-2 rounded-md text-purple-600 hover:bg-purple-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={submitting || admin.role === "SuperAdmin"} // Prevent resetting SuperAdmin password via this interface
+                            title="Reset Password"
+                            aria-label={`Reset password for ${admin.username}`}
+                          >
+                            <FaKey className="text-lg" />
+                          </button>
+                          <button
+                            onClick={() => toggleAdminStatus(admin)}
+                            className={`p-2 rounded-md ${admin.active ? "text-red-600 hover:bg-red-100" : "text-green-600 hover:bg-green-100"} transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed`}
+                            disabled={
+                              submitting ||
+                              admin._id === getCurrentUserID() ||
+                              admin.role === "SuperAdmin"
+                            } // Prevent deactivating self or SuperAdmin role
+                            title={
+                              admin.active ? "Deactivate User" : "Activate User"
+                            }
+                            aria-label={
+                              admin.active
+                                ? `Deactivate user ${admin.username}`
+                                : `Activate user ${admin.username}`
+                            }
+                          >
+                            {admin.active ? (
+                              <FaTimes className="text-lg" />
+                            ) : (
+                              <FaCheck className="text-lg" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(admin)}
+                            className="p-2 rounded-md text-red-600 hover:bg-red-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={
+                              submitting ||
+                              admin._id === getCurrentUserID() ||
+                              admin.role === "SuperAdmin"
+                            } // Prevent deleting self or SuperAdmin role
+                            title="Delete User"
+                            aria-label={`Delete user ${admin.username}`}
+                          >
+                            <FaTrash className="text-lg" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-6 text-center text-gray-600">
+                      {error
+                        ? `Error loading admin users: ${error}`
+                        : "No admin users found."}
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop View (Table) */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Username
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Role
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Location
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Color
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Created At
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {admins.length > 0 ? (
+                        admins.map((admin) => (
+                          <tr
+                            key={admin._id}
+                            className="hover:bg-gray-50 transition-colors duration-150"
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              <div className="flex items-center">
+                                <div
+                                  className="w-6 h-6 rounded-md mr-3 border border-gray-300"
+                                  style={{
+                                    backgroundColor: admin.color || "#4299e1",
+                                  }}
+                                ></div>
+                                {admin.username}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {admin.email || "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                                  admin.role === "SuperAdmin"
+                                    ? "bg-purple-100 text-purple-800 border-purple-200"
+                                    : admin.role === "Admin"
+                                      ? "bg-blue-100 text-blue-800 border-blue-200"
+                                      : admin.role === "ViewMode"
+                                        ? "bg-green-100 text-green-800 border-green-200"
+                                        : "bg-yellow-100 text-yellow-800 border-yellow-200" // EditMode
+                                }`}
+                              >
+                                {admin.role}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {admin.location || "—"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {getColorName(admin.color || "#4299e1")}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              <span
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  admin.active
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                <div
+                                  className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                                    admin.active ? "bg-green-400" : "bg-red-400"
+                                  }`}
+                                ></div>
+                                {admin.active ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {new Date(admin.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openEditModal(admin)}
+                                  className="p-2 rounded-md text-blue-600 hover:bg-blue-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={
+                                    submitting ||
+                                    (admin._id === getCurrentUserID() &&
+                                      userRole === "SuperAdmin")
+                                  } // Prevent editing self if SuperAdmin
+                                  title="Edit User"
+                                  aria-label={`Edit user ${admin.username}`}
+                                >
+                                  <FaEdit className="text-lg" />
+                                </button>
+                                <button
+                                  onClick={() => openResetPasswordModal(admin)}
+                                  className="p-2 rounded-md text-purple-600 hover:bg-purple-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={
+                                    submitting || admin.role === "SuperAdmin"
+                                  } // Prevent resetting SuperAdmin password via this interface
+                                  title="Reset Password"
+                                  aria-label={`Reset password for ${admin.username}`}
+                                >
+                                  <FaKey className="text-lg" />
+                                </button>
+                                <button
+                                  onClick={() => toggleAdminStatus(admin)}
+                                  className={`p-2 rounded-md ${admin.active ? "text-red-600 hover:bg-red-100" : "text-green-600 hover:bg-green-100"} transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  disabled={
+                                    submitting ||
+                                    admin._id === getCurrentUserID() ||
+                                    admin.role === "SuperAdmin"
+                                  } // Prevent deactivating self or SuperAdmin role
+                                  title={
+                                    admin.active
+                                      ? "Deactivate User"
+                                      : "Activate User"
+                                  }
+                                  aria-label={
+                                    admin.active
+                                      ? `Deactivate user ${admin.username}`
+                                      : `Activate user ${admin.username}`
+                                  }
+                                >
+                                  {admin.active ? (
+                                    <FaTimes className="text-lg" />
+                                  ) : (
+                                    <FaCheck className="text-lg" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => openDeleteModal(admin)}
+                                  className="p-2 rounded-md text-red-600 hover:bg-red-100 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  disabled={
+                                    submitting ||
+                                    admin._id === getCurrentUserID() ||
+                                    admin.role === "SuperAdmin"
+                                  } // Prevent deleting self or SuperAdmin role
+                                  title="Delete User"
+                                  aria-label={`Delete user ${admin.username}`}
+                                >
+                                  <FaTrash className="text-lg" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="8"
+                            className="px-6 py-4 text-center text-gray-600"
+                          >
+                            {error
+                              ? `Error loading admin users: ${error}`
+                              : "No admin users found."}
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="8" className={styles.noDataMessage}>
-                          {" "}
-                          {/* Use noDataMessage class */}
-                          {error
-                            ? `Error loading admin users: ${error}`
-                            : "No admin users found."}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Modal */}
-          {showModal && (
-            <div className={styles.modalBackdrop}>
-              <div className={styles.modalContent}>
-                <div className={styles.modalHeader}>
-                  <h3 className={styles.modalTitle}>
-                    {modalType === "create"
-                      ? "Create New Admin User"
-                      : modalType === "edit"
-                        ? "Edit Admin User"
-                        : modalType === "delete"
-                          ? "Delete Admin User"
-                          : "Reset Password"}
-                  </h3>
-                  <button
-                    className={styles.modalCloseButton}
-                    onClick={closeModal}
-                    disabled={submitting}
-                  >
-                    ×
-                  </button>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                {error && ( // Display modal-specific errors (though handled by page error state now)
-                  <div className={styles.errorMessage}>
-                    <FaTimes
-                      className={styles.errorIcon}
-                      style={{ marginRight: "0.5rem" }}
-                    />{" "}
-                    {error}
-                  </div>
-                )}
-                {/* Display form errors inline */}
-                <form onSubmit={handleSubmit}>
-                  <div className={styles.modalBody}>
-                    {modalType === "delete" ? (
-                      <p>
-                        Are you sure you want to delete the admin user "
-                        {selectedAdmin?.username}"?
-                      </p>
-                    ) : (
-                      <>
-                        {/* Username field - readonly for edit mode */}
-                        <div className={styles.formGroup}>
+              </div>
+            )}
+          </div>
+        </AccessControl>
+      </main>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform transition-all">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">
+                {modalType === "create"
+                  ? "Create New Admin User"
+                  : modalType === "edit"
+                    ? "Edit Admin User"
+                    : modalType === "delete"
+                      ? "Delete Admin User"
+                      : "Reset Password"}
+              </h3>
+              <button
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200 text-2xl leading-none disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={closeModal}
+                disabled={submitting}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <form onSubmit={handleSubmit}>
+              <div className="p-6">
+                {modalType === "delete" ? (
+                  <p className="text-gray-700 text-center py-4">
+                    Are you sure you want to delete the admin user "
+                    <span className="font-semibold">
+                      {selectedAdmin?.username}
+                    </span>
+                    "? This action cannot be undone.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    {" "}
+                    {/* Responsive grid for form fields */}
+                    {/* Username field - readonly for edit mode */}
+                    <div className="md:col-span-2">
+                      {" "}
+                      {/* Span full width on desktop */}
+                      <label
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                        htmlFor="username"
+                      >
+                        Username{" "}
+                        {modalType === "create" && (
+                          <span className="text-red-500">*</span>
+                        )}
+                      </label>
+                      <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${formErrors.username ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300"}`}
+                        readOnly={modalType !== "create"} // Readonly if not creating
+                        required={modalType === "create"} // Required only for create
+                        disabled={submitting || modalType !== "create"} // Disable if submitting or not creating
+                      />
+                      {formErrors.username && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.username}
+                        </p>
+                      )}
+                    </div>
+                    {/* Email field */}
+                    <div className="md:col-span-2">
+                      {" "}
+                      {/* Span full width on desktop */}
+                      <label
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                        htmlFor="email"
+                      >
+                        Email (optional)
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className={`block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${formErrors.email ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300"}`}
+                        disabled={submitting}
+                      />
+                      {formErrors.email && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {formErrors.email}
+                        </p>
+                      )}
+                    </div>
+                    {/* Location field */}
+                    {(modalType === "create" || modalType === "edit") && (
+                      <div>
+                        <label
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                          htmlFor="location"
+                        >
+                          Location
+                        </label>
+                        <select
+                          id="location"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleInputChange}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={submitting}
+                        >
+                          <option value="Pune">Pune</option>
+                          <option value="Mumbai">Mumbai</option>
+                          <option value="Raipur">Raipur</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    )}
+                    {/* Role dropdown - only for create and edit */}
+                    {(modalType === "create" || modalType === "edit") && (
+                      <div>
+                        <label
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                          htmlFor="role"
+                        >
+                          Role {<span className="text-red-500">*</span>}
+                        </label>
+                        <select
+                          id="role"
+                          name="role"
+                          value={formData.role}
+                          onChange={handleInputChange}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={
+                            submitting || selectedAdmin?.role === "SuperAdmin"
+                          } // Prevent changing role of SuperAdmin
+                          required
+                        >
+                          <option value="Admin">Admin</option>
+                          <option value="ViewMode">View Mode</option>
+                          <option value="EditMode">Edit Mode</option>
+                          {/* Only allow creating/assigning SuperAdmin role if current user is SuperAdmin */}
+                          {userRole === "SuperAdmin" && (
+                            <option value="SuperAdmin">Super Admin</option>
+                          )}
+                        </select>
+                      </div>
+                    )}
+                    {/* Color field */}
+                    {(modalType === "create" || modalType === "edit") &&
+                      // Disable color selection for SuperAdmins (or remove if they shouldn't have colors)
+                      selectedAdmin?.role !== "SuperAdmin" && (
+                        <div className="md:col-span-2">
+                          {" "}
+                          {/* Span full width */}
                           <label
-                            className={styles.formLabel}
-                            htmlFor="username"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                            htmlFor="color"
                           >
-                            Username <span className={styles.required}>*</span>
+                            Color
+                          </label>
+                          <div className="relative">
+                            <select
+                              id="color"
+                              name="color"
+                              value={formData.color}
+                              onChange={handleInputChange}
+                              className="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none" // appearance-none to hide default arrow
+                              disabled={submitting}
+                            >
+                              {/* Add current color if editing and it's not in available list */}
+                              {modalType === "edit" &&
+                                selectedAdmin?.color &&
+                                !getAvailableColors(selectedAdmin?._id).some(
+                                  (c) => c.code === selectedAdmin.color
+                                ) && (
+                                  <option
+                                    value={selectedAdmin.color}
+                                    // Use inline style for background color with transparency
+                                    style={{
+                                      backgroundColor: `${selectedAdmin.color}20`,
+                                    }}
+                                  >
+                                    {getColorName(selectedAdmin.color)} (
+                                    {selectedAdmin.color}) - Current
+                                  </option>
+                                )}
+
+                              {/* List available colors */}
+                              {getAvailableColors(selectedAdmin?._id).map(
+                                (color, index) => (
+                                  <option
+                                    key={index}
+                                    value={color.code}
+                                    // Use inline style for background color with transparency
+                                    style={{
+                                      backgroundColor: `${color.code}20`,
+                                    }}
+                                  >
+                                    {color.name} ({color.code})
+                                  </option>
+                                )
+                              )}
+                              {/* Add a generic option if no colors are available, or if you allow custom colors */}
+                              {getAvailableColors(selectedAdmin?._id).length ===
+                                0 &&
+                                modalType !== "edit" && (
+                                  <option value="" disabled>
+                                    No colors available
+                                  </option>
+                                )}
+                            </select>
+                            <div
+                              className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 rounded border border-gray-300 pointer-events-none"
+                              style={{
+                                backgroundColor: formData.color || "#4299e1",
+                              }}
+                            />
+                            {/* Custom arrow for select */}
+                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                              <svg
+                                className="h-4 w-4 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M8 9l4-4 4 4m0 6l-4 4-4-4"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
+                            <div
+                              className="w-5 h-5 rounded-md border border-gray-300"
+                              style={{
+                                backgroundColor: formData.color || "#4299e1",
+                              }}
+                            />
+                            <span>Color Preview</span>
+                          </div>
+                        </div>
+                      )}
+                    {/* Active status toggle - only for edit */}
+                    {modalType === "edit" && (
+                      <div>
+                        <label
+                          className="block text-sm font-medium text-gray-700 mb-1"
+                          htmlFor="active"
+                        >
+                          Status {<span className="text-red-500">*</span>}
+                        </label>
+                        <select
+                          id="active"
+                          name="active"
+                          value={formData.active.toString()} // Use toString for select value
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              active: e.target.value === "true", // Convert string back to boolean
+                            })
+                          }
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={
+                            submitting ||
+                            selectedAdmin?._id === getCurrentUserID() || // Prevent changing status of logged-in user
+                            selectedAdmin?.role === "SuperAdmin" // Prevent changing status of SuperAdmin role
+                          }
+                          required
+                        >
+                          <option value="true">Active</option>
+                          <option value="false">Inactive</option>
+                        </select>
+                      </div>
+                    )}
+                    {/* Password fields - only for create and reset */}
+                    {(modalType === "create" || modalType === "reset") && (
+                      <>
+                        <div className="md:col-span-2">
+                          {" "}
+                          {/* Span full width */}
+                          <label
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                            htmlFor="password"
+                          >
+                            New Password <span className="text-red-500">*</span>
                           </label>
                           <input
-                            type="text"
-                            id="username"
-                            name="username"
-                            value={formData.username}
+                            type="password"
+                            id="password"
+                            name="password"
+                            value={formData.password}
                             onChange={handleInputChange}
-                            className={`${styles.formInput} ${formErrors.username ? styles.inputError : ""}`}
-                            readOnly={modalType !== "create"} // Readonly if not creating
+                            className={`block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${formErrors.password ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300"}`}
                             required
                             disabled={submitting}
                           />
-                          {formErrors.username && (
-                            <p className={styles.formError}>
-                              {formErrors.username}
+                          {formErrors.password && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {formErrors.password}
                             </p>
                           )}
                         </div>
 
-                        {/* Email field */}
-                        <div className={styles.formGroup}>
-                          <label className={styles.formLabel} htmlFor="email">
-                            Email (optional)
+                        <div className="md:col-span-2">
+                          {" "}
+                          {/* Span full width */}
+                          <label
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                            htmlFor="confirmPassword"
+                          >
+                            Confirm New Password{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                           <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
                             onChange={handleInputChange}
-                            className={`${styles.formInput} ${formErrors.email ? styles.inputError : ""}`}
+                            className={`block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed ${formErrors.confirmPassword ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-gray-300"}`}
+                            required
                             disabled={submitting}
                           />
-                          {formErrors.email && (
-                            <p className={styles.formError}>
-                              {formErrors.email}
+                          {formErrors.confirmPassword && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {formErrors.confirmPassword}
                             </p>
                           )}
                         </div>
-
-                        {/* Location field */}
-                        {(modalType === "create" || modalType === "edit") && (
-                          <div className={styles.formGroup}>
-                            <label
-                              className={styles.formLabel}
-                              htmlFor="location"
-                            >
-                              Location
-                            </label>
-                            <select
-                              id="location"
-                              name="location"
-                              value={formData.location}
-                              onChange={handleInputChange}
-                              className={styles.formSelect}
-                              disabled={submitting}
-                            >
-                              <option value="Pune">Pune</option>
-                              <option value="Mumbai">Mumbai</option>
-                              <option value="Raipur">Raipur</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                        )}
-
-                        {/* Color field */}
-                        {(modalType === "create" || modalType === "edit") &&
-                          // Disable color selection for SuperAdmins (or remove if they shouldn't have colors)
-                          selectedAdmin?.role !== "SuperAdmin" && (
-                            <div className={styles.formGroup}>
-                              <label
-                                className={styles.formLabel}
-                                htmlFor="color"
-                              >
-                                Color
-                              </label>
-                              <div className={styles.colorSelectContainer}>
-                                <select
-                                  id="color"
-                                  name="color"
-                                  value={formData.color}
-                                  onChange={handleInputChange}
-                                  className={styles.formSelect}
-                                  style={{ paddingLeft: "30px" }}
-                                  disabled={submitting}
-                                >
-                                  {/* Add current color if editing and it's not in available list */}
-                                  {modalType === "edit" &&
-                                    selectedAdmin?.color &&
-                                    !getAvailableColors(
-                                      selectedAdmin?._id
-                                    ).some(
-                                      (c) => c.code === selectedAdmin.color
-                                    ) && (
-                                      <option
-                                        value={selectedAdmin.color}
-                                        style={{
-                                          backgroundColor: `${selectedAdmin.color}20`,
-                                        }}
-                                      >
-                                        {getColorName(selectedAdmin.color)} (
-                                        {selectedAdmin.color}) - Current
-                                      </option>
-                                    )}
-
-                                  {/* List available colors */}
-                                  {getAvailableColors(selectedAdmin?._id).map(
-                                    (color, index) => (
-                                      <option
-                                        key={index}
-                                        value={color.code}
-                                        style={{
-                                          backgroundColor: `${color.code}20`,
-                                        }}
-                                      >
-                                        {color.name} ({color.code})
-                                      </option>
-                                    )
-                                  )}
-                                  {/* Add a generic option if no colors are available, or if you allow custom colors */}
-                                  {getAvailableColors(selectedAdmin?._id)
-                                    .length === 0 &&
-                                    modalType !== "edit" && (
-                                      <option value="" disabled>
-                                        No colors available
-                                      </option>
-                                    )}
-                                </select>
-                                <div
-                                  style={{
-                                    position: "absolute",
-                                    left: "10px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    width: "16px",
-                                    height: "16px",
-                                    backgroundColor:
-                                      formData.color || "#4299e1",
-                                    borderRadius: "3px",
-                                    border: "1px solid #ddd",
-                                    pointerEvents: "none",
-                                  }}
-                                />
-                              </div>
-                              <div
-                                style={{
-                                  marginTop: "0.5rem",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: "0.5rem",
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    backgroundColor:
-                                      formData.color || "#4299e1",
-                                    borderRadius: "4px",
-                                    border: "1px solid #ddd",
-                                  }}
-                                />
-                                <span>Color Preview</span>
-                              </div>
-                            </div>
-                          )}
-
-                        {/* Password fields - only for create and reset */}
-                        {(modalType === "create" || modalType === "reset") && (
-                          <>
-                            <div className={styles.formGroup}>
-                              <label
-                                className={styles.formLabel}
-                                htmlFor="password"
-                              >
-                                New Password{" "}
-                                <span className={styles.required}>*</span>
-                              </label>
-                              <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleInputChange}
-                                className={`${styles.formInput} ${formErrors.password ? styles.inputError : ""}`}
-                                required
-                                disabled={submitting}
-                              />
-                              {formErrors.password && (
-                                <p className={styles.formError}>
-                                  {formErrors.password}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className={styles.formGroup}>
-                              <label
-                                className={styles.formLabel}
-                                htmlFor="confirmPassword"
-                              >
-                                Confirm New Password{" "}
-                                <span className={styles.required}>*</span>
-                              </label>
-                              <input
-                                type="password"
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                value={formData.confirmPassword}
-                                onChange={handleInputChange}
-                                className={`${styles.formInput} ${formErrors.confirmPassword ? styles.inputError : ""}`}
-                                required
-                                disabled={submitting}
-                              />
-                              {formErrors.confirmPassword && (
-                                <p className={styles.formError}>
-                                  {formErrors.confirmPassword}
-                                </p>
-                              )}
-                            </div>
-                          </>
-                        )}
-
-                        {/* Role dropdown - only for create and edit */}
-                        {(modalType === "create" || modalType === "edit") && (
-                          <div className={styles.formGroup}>
-                            <label className={styles.formLabel} htmlFor="role">
-                              Role <span className={styles.required}>*</span>
-                            </label>
-                            <select
-                              id="role"
-                              name="role"
-                              value={formData.role}
-                              onChange={handleInputChange}
-                              className={styles.formSelect}
-                              disabled={
-                                submitting ||
-                                selectedAdmin?.role === "SuperAdmin"
-                              } // Prevent changing role of SuperAdmin
-                              required
-                            >
-                              <option value="Admin">Admin</option>
-                              <option value="ViewMode">View Mode</option>
-                              <option value="EditMode">Edit Mode</option>
-                              {/* Only allow creating/assigning SuperAdmin role if current user is SuperAdmin */}
-                              {userRole === "SuperAdmin" && (
-                                <option value="SuperAdmin">Super Admin</option>
-                              )}
-                            </select>
-                          </div>
-                        )}
-
-                        {/* Active status toggle - only for edit */}
-                        {modalType === "edit" && (
-                          <div className={styles.formGroup}>
-                            <label
-                              className={styles.formLabel}
-                              htmlFor="active"
-                            >
-                              Status <span className={styles.required}>*</span>
-                            </label>
-                            <select
-                              id="active"
-                              name="active"
-                              value={formData.active.toString()} // Use toString for select value
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  active: e.target.value === "true", // Convert string back to boolean
-                                })
-                              }
-                              className={styles.formSelect}
-                              disabled={
-                                submitting ||
-                                selectedAdmin?._id === getCurrentUserID()
-                              } // Prevent changing status of logged-in user
-                              required
-                            >
-                              <option value="true">Active</option>
-                              <option value="false">Inactive</option>
-                            </select>
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
-                  <div className={styles.modalFooter}>
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className={`${styles.button} ${styles.secondaryButton}`}
-                      disabled={submitting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className={`${styles.button} ${
-                        modalType === "delete"
-                          ? styles.dangerButton
-                          : styles.primaryButton
-                      }`}
-                      disabled={submitting}
-                    >
-                      {submitting ? (
-                        <>
-                          <FaSpinner
-                            className={styles.spinner}
-                            style={{ marginRight: "0.5rem" }}
-                          />
-                          {modalType === "create"
-                            ? "Creating..."
-                            : modalType === "edit"
-                              ? "Updating..."
-                              : modalType === "delete"
-                                ? "Deleting..."
-                                : "Resetting..."}
-                        </>
-                      ) : (
-                        <>
-                          {modalType === "create"
-                            ? "Create Admin"
-                            : modalType === "edit"
-                              ? "Update Admin"
-                              : modalType === "delete"
-                                ? "Delete Admin"
-                                : "Reset Password"}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
-            </div>
-          )}
-        </AccessControl>
-      </main>
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-sm"
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`inline-flex items-center px-4 py-2 font-medium rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-sm
+                      ${
+                        modalType === "delete"
+                          ? "bg-red-600 text-white hover:bg-red-700"
+                          : "bg-blue-600 text-white hover:bg-blue-700"
+                      }
+                    `}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <FaSpinner className="animate-spin mr-2" />
+                      {modalType === "create"
+                        ? "Creating..."
+                        : modalType === "edit"
+                          ? "Updating..."
+                          : modalType === "delete"
+                            ? "Deleting..."
+                            : "Resetting..."}
+                    </>
+                  ) : (
+                    <>
+                      {modalType === "create"
+                        ? "Create Admin"
+                        : modalType === "edit"
+                          ? "Update Admin"
+                          : modalType === "delete"
+                            ? "Delete Admin"
+                            : "Reset Password"}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
