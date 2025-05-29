@@ -2,14 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-// Removed styles import
-// import styles from "@/styles/adminlogin/AdminLogin.module.css";
 import { FaUser, FaLock, FaSpinner, FaEye, FaEyeSlash } from "react-icons/fa"; // Import icons, including eye icons
-
-// Assuming fetchWithAuth is in a shared utility file
-// We can import it here, but the original code *didn't* use fetchWithAuth for login,
-// it used a direct fetch. Let's stick to the original logic and use a direct fetch.
-// import { fetchWithAuth } from "@/utils/auth";
 
 const AdminLogin = () => {
   const [username, setUsername] = useState("");
@@ -220,39 +213,5 @@ const AdminLogin = () => {
     </section>
   );
 };
-
-// You will need to add these custom utilities to your tailwind.config.js
-// and potentially your global.css file.
-// For tailwind.config.js:
-// extend: {
-//   // Consider keeping backgroundImage here if the URL is static
-//   // backgroundImage: {
-//   //   'night-mountains': "url('https://img.freepik.com/premium-vector/background-night-mountains-whimsical-cartoon-illustration-night-mountains_198565-8267.jpg')",
-//   // },
-//   colors: {
-//      wheat: '#F5DEB3', // Or the exact hex for 'wheat' from your CSS
-//      'yellow-100': '#FEF3C7', // Example Tailwind yellow-100, adjust if needed for exact match
-//      'orange-700': '#C2410C', // Example Tailwind orange-700, adjust if needed for exact match
-//   },
-//    // Add text shadow utility if you define it in global.css
-//    // Or use a custom plugin for text-shadow
-//    textShadow: {
-//       'sm': '1px 1px 2px rgba(0, 0, 0, 0.5)', // Adjusted for rgba
-//       'DEFAULT': '0.5px 0.5px 4px rgba(0, 0, 0, 0.5)', // Adjusted for rgba
-//    },
-// },
-// plugins: [
-//   // If using a plugin for text-shadow, include it here
-// ],
-
-// For global.css if not using a plugin for text-shadow:
-// @layer utilities {
-//   .text-shadow-sm {
-//     text-shadow: 1px 1px 2px black;
-//   }
-//   .text-shadow {
-//     text-shadow: 0.5px 0.5px 4px black; /* Match original 0.5px 0.5px 4px black */
-//   }
-// }
 
 export default AdminLogin;
